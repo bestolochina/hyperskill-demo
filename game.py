@@ -1,74 +1,60 @@
-from random import randint
+from random import choice
 
 
-def set_pencils() -> int:
-    print("How many pencils would you like to use: ")
-    while True:
-        try:
-            pencils = int(input())
-        except ValueError:
-            print("The number of pencils should be numeric")
-        else:
-            if pencils <= 0:
-                print("The number of pencils should be positive")
-                continue
-            return pencils
+def get_name() -> str:
+    name = input('Enter your name: ')
+    print(f'Hello, {name}')
+    return name
 
 
-def set_first_player(players: tuple[str, str]) -> int:
-    print(f'Who will be the first ({players[0]}, {players[1]}): ')
-    while True:
-        try:
-            first = players.index(input())
-        except ValueError:
-            print(f"Choose between '{players[0]}' and '{players[1]}'")
-        else:
-            return first
+def get_rating(name) -> int:
+    with open('rating.txt', 'r') as file:
+        lines = [line.split() for line in file.readlines()]
+    ratings = {line[0]: int(line[1]) for line in lines}
+    return ratings[name] if name in ratings.keys() else 0
 
 
-def human_move(pencils: int) -> int:
-    while True:
-        try:
-            move = int(input())
-        except ValueError:
-            print("Possible values: '1', '2' or '3'")
-        else:
-            if move not in {1, 2, 3}:
-                print("Possible values: '1', '2' or '3'")
-                continue
-            elif move > pencils:
-                print("Too many pencils were taken")
-                continue
-            return pencils - move
-
-
-def bot_move(pencils: int) -> int:
-    num = (pencils - 1) % 4
-    if num == 0:
-        if pencils == 1:
-            move = 1
-        else:
-            move = randint(1, 3)
+def get_options() -> tuple:
+    user_input = input()
+    if not user_input:
+        options = ('rock', 'paper', 'scissors')
     else:
-        move = num
-    print(move)
-    return pencils - move
+        options = tuple(user_input.split(','))
+    print("Okay, let's start")
+    return options
+
+
+def game(options: tuple, rating: int) -> None:
+    while True:
+        user_choice = input()
+        if user_choice == '!exit':
+            print('Bye!')
+            break
+        elif user_choice == '!rating':
+            print(f'Your rating: {rating}')
+            continue
+        elif user_choice not in options:
+            print('Invalid input')
+            continue
+
+        computer_choice = choice(options)
+        difference = (options.index(computer_choice) - options.index(user_choice)) % len(options)
+        if difference == 0:
+            print(f'There is a draw ({computer_choice})')
+            rating += 50
+        elif difference < len(options) / 2:
+            print(f'Sorry, but the computer chose {computer_choice}')
+        else:
+            print(f'Well done. The computer chose {computer_choice} and failed')
+            rating += 100
 
 
 def main():
-    pencils = set_pencils()
-    players = ("John", "Jack")
-    player = set_first_player(players)
-    bot = 1
-    while pencils > 0:
-        print("|" * pencils)
-        print(f"{players[player]}'s turn!")
-        if player == bot:
-            pencils = bot_move(pencils)
-        else:
-            pencils = human_move(pencils)
-        player = (player + 1) % 2
-    print(f"{players[player]} won!")
+    name = get_name()
+    rating = get_rating(name)
+    options = get_options()
+    game(options, rating)
 
 
-main()
+if __name__ == '__main__':
+    main()
