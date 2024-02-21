@@ -5,7 +5,7 @@ import sys
 class Duskers:
     def __init__(self, seed=None, min_duration=0, max_duration=0,
                  places='High_street,Green_park,Destroyed_Arch,Old_beach_bar,JetBrains_office'):
-        random.seed = seed
+        random.seed(seed)
         self.min_duration = min_duration
         self.max_duration = max_duration
         self.places = places.split(',')
@@ -87,10 +87,10 @@ class Duskers:
                 break
 
         while True:
-            print('__________(LOG)__________________________________________________(LOG)__________\n'
-                  f'| Titanium: {self.titanium}                                                                  |\n'
-                  '+==============================================================================+')
+            print('+==============================================================================+')
             self.print_robots()
+            print('+==============================================================================+')
+            print(f'| Titanium: {self.titanium}                                                                 |')
             print('+==============================================================================+\n'
                   '|                  [Ex]plore                          [Up]grade                |\n'
                   '|                  [Save]                             [M]enu                   |\n'
@@ -98,6 +98,7 @@ class Duskers:
             choice = self.user_choice('\nYour command: ', ['ex', 'save', 'up', 'm'])
             if choice == 'ex':
                 self.explore()
+                continue
             elif choice == 'save':
                 print('COMING SOON!')
                 sys.exit()
@@ -126,10 +127,11 @@ class Duskers:
                     sys.exit()
 
     def explore(self):
+
         def search():
             num = len(self.ex_places) + 1
             if num > max_num:
-                print('Nothing more in sight.'
+                print('Nothing more in sight.\n'
                       '       [Back]')
                 return
             print('Searching')
@@ -140,23 +142,27 @@ class Duskers:
                 print(f'[{key}] {self.ex_places[key][0]}')
             print('\n[S] to continue searching')
             return
+
+        def deploy(num: str):
+            print('Deploying robots\n'
+                  f'{self.ex_places[num][0]} explored successfully, with no damage taken.\n'
+                  f'Acquired {self.ex_places[num][1]} lumps of titanium')
+            self.titanium += self.ex_places[num][1]
+            # self.ex_places[num][1] = 0
+            return
+
         self.ex_places = {}
         max_num = random.randint(1, 9)
         while True:
             search()
-            choice = self.user_choice('\nYour command: ', ['s']+list(self.ex_places.keys()))
-
-
-
-        # Searching
-        # [1] Destroyed Arch
-        #
-        # [S] to continue searching
-        #
-        # Your command: > s
-        # Searching
-        # [1] Destroyed Arch
-        # [2] High street
+            choice = self.user_choice('\nYour command: ', ['s', 'back']+list(self.ex_places.keys()))
+            if choice == 's':
+                continue
+            elif choice == 'back':
+                return
+            else:
+                deploy(choice)
+                return
 
 
 def main():
