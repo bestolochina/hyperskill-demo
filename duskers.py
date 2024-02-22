@@ -1,3 +1,4 @@
+import os.path
 import random
 import sys
 
@@ -19,6 +20,9 @@ class Duskers:
             '     $$$   $$$     ',
             '     $       $     ')
         self.titanium = 0
+        self.slots = [{'number': 1, 'file': 'save_file_1.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''},
+                      {'number': 2, 'file': 'save_file_2.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''},
+                      {'number': 3, 'file': 'save_file_3.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''}]
 
     def print_robots(self):
         for line in self.robot:
@@ -36,18 +40,18 @@ class Duskers:
               '+=======================================================================+\n')
 
     @staticmethod
-    def user_choice(message: str, options: list[str]) -> str:
+    def user_choice(options: list[str], prompt: str = '\nYour command: ', err: str = 'Invalid input') -> str:
         while True:
-            user_input = input(message).lower()
+            user_input = input(prompt).lower()
             if user_input in options:
                 return user_input
-            print('Invalid input')
+            print(err)
 
     def main_menu(self):
         while True:
             self.print_title()
-            print('[Play]', '[High] Scores', '[Help]', '[Exit]', sep='\n')
-            choice = self.user_choice('\nYour command: ', ['play', 'high', 'help', 'exit'])
+            print('[New]  Game', '[Load] Game', '[High] Scores', '[Help]', '[Exit]', sep='\n')
+            choice = self.user_choice(['new', 'load', 'high', 'help', 'exit'])
             if choice == 'help':
                 self.help_menu()
             elif choice == 'high':
@@ -55,12 +59,15 @@ class Duskers:
             elif choice == 'exit':
                 print('\nThanks for playing, bye!')
                 sys.exit()
-            elif choice == 'play':
-                self.play_menu()
+            elif choice == 'new':
+                if self.greeting() == 'new':
+                    self.play_menu()
+            elif choice == 'load':
+                self.load_menu()
 
     def high_score_menu(self):
         print('No scores to display.\n    [Back]\n')
-        choice = self.user_choice('Your command: ', ['back'])
+        choice = self.user_choice(['back'])
         if choice == 'back':
             return
 
@@ -68,24 +75,43 @@ class Duskers:
         print('Coming SOON! Thanks for playing!')
         sys.exit()
 
-    def greeting(self):
+    def greeting(self) -> str | None:
         self.user_name = input('\nEnter your name: ')
         print(f'\nGreetings, commander {self.user_name}!\n')
 
-    def play_menu(self):
-        self.greeting()
-
         while True:
             print('Are you ready to begin?\n[Yes] [No] Return to Main[Menu]')
-            choice = self.user_choice('\nYour command: ', ['yes', 'no', 'menu'])
+            choice = self.user_choice(['yes', 'no', 'menu'])
             if choice == 'no':
                 print('\nHow about now.')
                 continue
             elif choice == 'menu':
                 return
             elif choice == 'yes':
-                break
+                return 'new'
 
+    def load_menu(self):
+        occupied_slots = []
+        print('   Select save slot:')
+        for slot in self.slots:
+            if os.path.isfile(slot['file']):
+                with open(slot['file']) as file:
+                    lines = file.readlines()
+                slot['name'] = lines[0]
+                slot['titanium'] = int(lines[1])
+                slot['robots'] = int(lines[2])
+                slot['last_save'] = lines[3]
+                occupied_slots.append(str(slot['number']))
+                print(f'    [{slot['number']}] {slot['name']} Titanium: {slot['titanium']} Robots: {slot['robots']}'
+                      f' Last save: {slot['last_save']}')
+            else:
+                print(f'    [{slot['number']}] empty')
+        choice = self.user_choice(['back'] + occupied_slots, err='Empty slot!')
+        self.user_name = self.slots[int(choice) - 1]['name']
+        self.titanium = self.slots[int(choice) - 1]['titanium']
+        self.robots_number = self.slots[int(choice) - 1]['robots']
+
+    def play_menu(self):
         while True:
             print('+==============================================================================+')
             self.print_robots()
@@ -95,7 +121,7 @@ class Duskers:
                   '|                  [Ex]plore                          [Up]grade                |\n'
                   '|                  [Save]                             [M]enu                   |\n'
                   '+==============================================================================+')
-            choice = self.user_choice('\nYour command: ', ['ex', 'save', 'up', 'm'])
+            choice = self.user_choice(['ex', 'save', 'up', 'm'])
             if choice == 'ex':
                 self.explore()
                 continue
@@ -114,7 +140,7 @@ class Duskers:
                       '                          | [Save] and exit          |\n'
                       '                          | [Exit] game              |\n'
                       '                          |==========================|')
-                choice = self.user_choice('\nYour command: ', ['back', 'main', 'save', 'exit'])
+                choice = self.user_choice(['back', 'main', 'save', 'exit'])
                 if choice == 'back':
                     continue
                 elif choice == 'main':
@@ -148,14 +174,13 @@ class Duskers:
                   f'{self.ex_places[num][0]} explored successfully, with no damage taken.\n'
                   f'Acquired {self.ex_places[num][1]} lumps of titanium')
             self.titanium += self.ex_places[num][1]
-            # self.ex_places[num][1] = 0
             return
 
         self.ex_places = {}
         max_num = random.randint(1, 9)
         while True:
             search()
-            choice = self.user_choice('\nYour command: ', ['s', 'back']+list(self.ex_places.keys()))
+            choice = self.user_choice(['s', 'back']+list(self.ex_places.keys()))
             if choice == 's':
                 continue
             elif choice == 'back':
