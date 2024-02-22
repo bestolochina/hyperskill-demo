@@ -1,6 +1,7 @@
 import os.path
 import random
 import sys
+from datetime import datetime
 
 
 class Duskers:
@@ -57,13 +58,22 @@ class Duskers:
             elif choice == 'high':
                 self.high_score_menu()
             elif choice == 'exit':
-                print('\nThanks for playing, bye!')
-                sys.exit()
+                self.exit()
             elif choice == 'new':
                 if self.greeting() == 'new':
                     self.play_menu()
             elif choice == 'load':
-                self.load_menu()
+                choice = self.load_menu()
+                if choice == 'back':
+                    continue
+                self.user_name = self.slots[int(choice) - 1]['name']
+                self.titanium = self.slots[int(choice) - 1]['titanium']
+                self.robots_number = self.slots[int(choice) - 1]['robots']
+                print('                        |==============================|\n'
+                      '                        |    GAME LOADED SUCCESSFULLY  |\n'
+                      '                        |==============================|')
+                print(f' Welcome back, commander {self.user_name}!')
+                self.play_menu()
 
     def high_score_menu(self):
         print('No scores to display.\n    [Back]\n')
@@ -90,26 +100,45 @@ class Duskers:
             elif choice == 'yes':
                 return 'new'
 
-    def load_menu(self):
+    def load_menu(self) -> str:
         occupied_slots = []
         print('   Select save slot:')
         for slot in self.slots:
             if os.path.isfile(slot['file']):
                 with open(slot['file']) as file:
                     lines = file.readlines()
-                slot['name'] = lines[0]
-                slot['titanium'] = int(lines[1])
-                slot['robots'] = int(lines[2])
-                slot['last_save'] = lines[3]
+                slot['name'] = lines[0].strip()
+                slot['titanium'] = int(lines[1].strip())
+                slot['robots'] = int(lines[2].strip())
+                slot['last_save'] = lines[3].strip()
                 occupied_slots.append(str(slot['number']))
                 print(f'    [{slot['number']}] {slot['name']} Titanium: {slot['titanium']} Robots: {slot['robots']}'
                       f' Last save: {slot['last_save']}')
             else:
                 print(f'    [{slot['number']}] empty')
-        choice = self.user_choice(['back'] + occupied_slots, err='Empty slot!')
-        self.user_name = self.slots[int(choice) - 1]['name']
-        self.titanium = self.slots[int(choice) - 1]['titanium']
-        self.robots_number = self.slots[int(choice) - 1]['robots']
+        return self.user_choice(['back'] + occupied_slots, err='Empty slot!')
+
+    def save_menu(self):
+        print('   Select save slot:')
+        for slot in self.slots:
+            if os.path.isfile(slot['file']):
+                with open(slot['file']) as file:
+                    lines = file.readlines()
+                print(f'    [{slot['number']}] {lines[0].strip()} Titanium: {lines[1].strip()} '
+                      f'Robots: {lines[2].strip()} Last save: {lines[3].strip()}')
+            else:
+                print(f'    [{slot['number']}] empty')
+        choice = self.user_choice(['back', '1', '2', '3'])
+        if choice == 'back':
+            return
+        with open(self.slots[int(choice) - 1]['file'], 'w', encoding='utf-8') as file:
+            print(self.user_name, file=file)
+            print(self.titanium, file=file)
+            print(self.robots_number, file=file)
+            print(datetime.now().strftime("%Y-%m-%d %H:%M"), file=file)
+        print('                        |==============================|\n'
+              '                        |    GAME SAVED SUCCESSFULLY   |\n'
+              '                        |==============================|')
 
     def play_menu(self):
         while True:
@@ -126,8 +155,8 @@ class Duskers:
                 self.explore()
                 continue
             elif choice == 'save':
-                print('COMING SOON!')
-                sys.exit()
+                self.save_menu()
+                continue
             elif choice == 'up':
                 print('COMING SOON!')
                 sys.exit()
@@ -146,11 +175,10 @@ class Duskers:
                 elif choice == 'main':
                     return
                 elif choice == 'save':
-                    print('COMING SOON!')
-                    sys.exit()
+                    self.save_menu()
+                    self.exit()
                 elif choice == 'exit':
-                    print('COMING SOON!')
-                    sys.exit()
+                    self.exit()
 
     def explore(self):
 
@@ -188,6 +216,11 @@ class Duskers:
             else:
                 deploy(choice)
                 return
+
+    @staticmethod
+    def exit():
+        print('Thanks for playing, bye!')
+        sys.exit()
 
 
 def main():
