@@ -14,16 +14,21 @@ class Duskers:
         self.ex_places = {}
         self.user_name = ''
         self.robots_number = 3
+        self.encounter_scan = 0
+        self.titanium_scan = 0
+        self.titanium = 0
         self.robot = (
             '  $   $$$$$$$   $  ',
             '  $$$$$     $$$$$  ',
             '      $$$$$$$      ',
             '     $$$   $$$     ',
             '     $       $     ')
-        self.titanium = 0
-        self.slots = [{'number': 1, 'file': 'save_file_1.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''},
-                      {'number': 2, 'file': 'save_file_2.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''},
-                      {'number': 3, 'file': 'save_file_3.txt', 'name': '', 'titanium': 0, 'robots': 3, 'last_save': ''}]
+        self.slots = [{'number': 1, 'file': 'save_file_1.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+                       'encounter_scan': 0, 'titanium_scan': 0},
+                      {'number': 2, 'file': 'save_file_2.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+                       'encounter_scan': 0, 'titanium_scan': 0},
+                      {'number': 3, 'file': 'save_file_3.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+                       'encounter_scan': 0, 'titanium_scan': 0}]
 
     def print_robots(self):
         for line in self.robot:
@@ -63,16 +68,8 @@ class Duskers:
                 if self.greeting() == 'new':
                     self.play_menu()
             elif choice == 'load':
-                choice = self.load_menu()
-                if choice == 'back':
+                if self.load_menu() == 'back':
                     continue
-                self.user_name = self.slots[int(choice) - 1]['name']
-                self.titanium = self.slots[int(choice) - 1]['titanium']
-                self.robots_number = self.slots[int(choice) - 1]['robots']
-                print('                        |==============================|\n'
-                      '                        |    GAME LOADED SUCCESSFULLY  |\n'
-                      '                        |==============================|')
-                print(f' Welcome back, commander {self.user_name}!')
                 self.play_menu()
 
     def high_score_menu(self):
@@ -100,7 +97,7 @@ class Duskers:
             elif choice == 'yes':
                 return 'new'
 
-    def load_menu(self) -> str:
+    def load_menu(self) -> str | None:
         occupied_slots = []
         print('   Select save slot:')
         for slot in self.slots:
@@ -110,13 +107,28 @@ class Duskers:
                 slot['name'] = lines[0].strip()
                 slot['titanium'] = int(lines[1].strip())
                 slot['robots'] = int(lines[2].strip())
-                slot['last_save'] = lines[3].strip()
+                slot['encounter_scan'] = int(lines[3].strip())
+                slot['titanium_scan'] = int(lines[4].strip())
+                slot['last_save'] = lines[5].strip()
                 occupied_slots.append(str(slot['number']))
                 print(f'    [{slot['number']}] {slot['name']} Titanium: {slot['titanium']} Robots: {slot['robots']}'
-                      f' Last save: {slot['last_save']}')
+                      f' Last save: {slot['last_save']} Upgrades: {'enemy_info' * slot['encounter_scan']}'
+                      f' {'titanium_info' * slot['titanium_scan']}')
             else:
                 print(f'    [{slot['number']}] empty')
-        return self.user_choice(['back'] + occupied_slots, err='Empty slot!')
+        choice = self.user_choice(['back'] + occupied_slots, err='Empty slot!')
+        if choice == 'back':
+            return 'back'
+        self.user_name = self.slots[int(choice) - 1]['name']
+        self.titanium = self.slots[int(choice) - 1]['titanium']
+        self.robots_number = self.slots[int(choice) - 1]['robots']
+        self.encounter_scan = self.slots[int(choice) - 1]['encounter_scan']
+        self.titanium_scan = self.slots[int(choice) - 1]['titanium_scan']
+        print('                        |==============================|\n'
+              '                        |    GAME LOADED SUCCESSFULLY  |\n'
+              '                        |==============================|')
+        print(f' Welcome back, commander {self.user_name}!')
+        return
 
     def save_menu(self):
         print('   Select save slot:')
@@ -124,8 +136,9 @@ class Duskers:
             if os.path.isfile(slot['file']):
                 with open(slot['file']) as file:
                     lines = file.readlines()
-                print(f'    [{slot['number']}] {lines[0].strip()} Titanium: {lines[1].strip()} '
-                      f'Robots: {lines[2].strip()} Last save: {lines[3].strip()}')
+                print(f'    [{slot['number']}] {lines[0].strip()} Titanium: {lines[1].strip()} Robots: '
+                      f'{lines[2].strip()} Last save: {lines[5].strip()} Upgrades: '
+                      f'{'enemy_info' * int(lines[3].strip())} {'titanium_info' * int(lines[4].strip())}')
             else:
                 print(f'    [{slot['number']}] empty')
         choice = self.user_choice(['back', '1', '2', '3'])
@@ -135,6 +148,8 @@ class Duskers:
             print(self.user_name, file=file)
             print(self.titanium, file=file)
             print(self.robots_number, file=file)
+            print(self.encounter_scan, file=file)
+            print(self.titanium_scan, file=file)
             print(datetime.now().strftime("%Y-%m-%d %H:%M"), file=file)
         print('                        |==============================|\n'
               '                        |    GAME SAVED SUCCESSFULLY   |\n'
@@ -189,15 +204,20 @@ class Duskers:
                       '       [Back]')
                 return
             print('Searching')
+
             place = random.choice(self.places)
             titanium = random.randint(10, 100)
-            self.ex_places[str(num)] = [place, titanium]
+            encounter_chance = random.random
+
+            self.ex_places[str(num)] = [place, titanium, encounter_chance]
             for key in self.ex_places:
                 print(f'[{key}] {self.ex_places[key][0]}')
             print('\n[S] to continue searching')
             return
 
         def deploy(num: str):
+            encounter = random.random
+
             print('Deploying robots\n'
                   f'{self.ex_places[num][0]} explored successfully, with no damage taken.\n'
                   f'Acquired {self.ex_places[num][1]} lumps of titanium')
