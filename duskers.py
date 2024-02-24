@@ -2,6 +2,7 @@ import os.path
 import random
 import sys
 from datetime import datetime
+from os.path import isfile
 
 
 class Duskers:
@@ -10,32 +11,37 @@ class Duskers:
         random.seed(seed)
         self.min_duration = min_duration
         self.max_duration = max_duration
-        self.places = places.split(',')
-        self.ex_places = {}
-        self.user_name = ''
-        self.robots_number = 3
-        self.encounter_scan = 0
-        self.titanium_scan = 0
-        self.titanium = 0
-        self.robot = (
+        self.places: list[str] = places.split(',')
+        self.ex_places: dict[str: list[str, int, float]] = {}
+        self.name: str = ''
+        self.robots_number: int = 3
+        self.encounter_scan: int = 0
+        self.titanium_scan: int = 0
+        self.titanium: int = 0
+        self.robot: tuple[str, str, str, str, str] = (
             '  $   $$$$$$$   $  ',
             '  $$$$$     $$$$$  ',
             '      $$$$$$$      ',
             '     $$$   $$$     ',
-            '     $       $     ')
-        self.slots = [{'number': 1, 'file': 'save_file_1.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
-                       'encounter_scan': 0, 'titanium_scan': 0},
-                      {'number': 2, 'file': 'save_file_2.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
-                       'encounter_scan': 0, 'titanium_scan': 0},
-                      {'number': 3, 'file': 'save_file_3.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
-                       'encounter_scan': 0, 'titanium_scan': 0}]
+            '     $       $     '
+        )
+        self.slots: list[dict[str: int, str: str, str: str, str: int, str: int, str: str, str: int, str: int]] = [
+            {'number': 1, 'file': 'save_file_1.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+             'encounter_scan': 0, 'titanium_scan': 0},
+            {'number': 2, 'file': 'save_file_2.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+             'encounter_scan': 0, 'titanium_scan': 0},
+            {'number': 3, 'file': 'save_file_3.txt', 'name': '', 'titanium': 0, 'robots': 0, 'last_save': '',
+             'encounter_scan': 0, 'titanium_scan': 0}
+        ]
+        self.h_s_file = 'high_scores.txt'
+        self.high_scores: list[tuple[str, int]] = []
 
-    def print_robots(self):
+    def print_robots(self) -> None:
         for line in self.robot:
             print('|'.join([line for _ in range(self.robots_number)]))
 
     @staticmethod
-    def print_title():
+    def print_title() -> None:
         print('+=======================================================================+\n'
               '  ######*   ##*   ##*  #######*  ##*  ##*  #######*  ######*   #######*  \n'
               '  ##*  ##*  ##*   ##*  ##*       ##* ##*   ##*       ##*  ##*  ##*       \n'
@@ -53,11 +59,11 @@ class Duskers:
                 return user_input
             print(err)
 
-    def main_menu(self):
+    def main_menu(self) -> None:
         while True:
             self.print_title()
             print('[New]  Game', '[Load] Game', '[High] Scores', '[Help]', '[Exit]', sep='\n')
-            choice = self.user_choice(['new', 'load', 'high', 'help', 'exit'])
+            choice = self.user_choice(['new', 'load', 'high', 'help', 'exit', 'back'])
             if choice == 'help':
                 self.help_menu()
             elif choice == 'high':
@@ -73,18 +79,28 @@ class Duskers:
                 self.play_menu()
 
     def high_score_menu(self):
-        print('No scores to display.\n    [Back]\n')
+        if not isfile(self.h_s_file):
+            print('No scores to display.')
+        else:
+            with open(self.h_s_file, 'r', encoding='utf-8') as file:
+                lines = list(enumerate(file.readlines(), start=1))
+            print('      HIGH SCORES')
+            for num, record in lines:
+                name, score = record.strip().split(',')
+                print(f'({num}) {name} {score}')
+
+        print('\n    [Back]\n')
         choice = self.user_choice(['back'])
         if choice == 'back':
             return
 
-    def help_menu(self):
-        print('Coming SOON! Thanks for playing!')
-        sys.exit()
+    @staticmethod
+    def help_menu() -> None:
+        print('Enjoy the game!')
 
     def greeting(self) -> str | None:
-        self.user_name = input('\nEnter your name: ')
-        print(f'\nGreetings, commander {self.user_name}!\n')
+        self.name = input('\nEnter your name: ')
+        print(f'\nGreetings, commander {self.name}!\n')
 
         while True:
             print('Are you ready to begin?\n[Yes] [No] Return to Main[Menu]')
@@ -119,7 +135,7 @@ class Duskers:
         choice = self.user_choice(['back'] + occupied_slots, err='Empty slot!')
         if choice == 'back':
             return 'back'
-        self.user_name = self.slots[int(choice) - 1]['name']
+        self.name = self.slots[int(choice) - 1]['name']
         self.titanium = self.slots[int(choice) - 1]['titanium']
         self.robots_number = self.slots[int(choice) - 1]['robots']
         self.encounter_scan = self.slots[int(choice) - 1]['encounter_scan']
@@ -127,10 +143,10 @@ class Duskers:
         print('                        |==============================|\n'
               '                        |    GAME LOADED SUCCESSFULLY  |\n'
               '                        |==============================|')
-        print(f' Welcome back, commander {self.user_name}!')
+        print(f' Welcome back, commander {self.name}!')
         return
 
-    def save_menu(self):
+    def save_menu(self) -> None:
         print('   Select save slot:')
         for slot in self.slots:
             if os.path.isfile(slot['file']):
@@ -145,7 +161,7 @@ class Duskers:
         if choice == 'back':
             return
         with open(self.slots[int(choice) - 1]['file'], 'w', encoding='utf-8') as file:
-            print(self.user_name, file=file)
+            print(self.name, file=file)
             print(self.titanium, file=file)
             print(self.robots_number, file=file)
             print(self.encounter_scan, file=file)
@@ -155,7 +171,7 @@ class Duskers:
               '                        |    GAME SAVED SUCCESSFULLY   |\n'
               '                        |==============================|')
 
-    def play_menu(self):
+    def play_menu(self) -> None:
         while True:
             print('+==============================================================================+')
             self.print_robots()
@@ -167,37 +183,84 @@ class Duskers:
                   '+==============================================================================+')
             choice = self.user_choice(['ex', 'save', 'up', 'm'])
             if choice == 'ex':
-                self.explore()
+                if self.explore() == 'main':
+                    return
                 continue
             elif choice == 'save':
                 self.save_menu()
                 continue
             elif choice == 'up':
-                print('COMING SOON!')
-                sys.exit()
+                self.upgrade()
             elif choice == 'm':
-                print('                          |==========================|\n'
-                      '                          |            MENU          |\n'
-                      '                          |                          |\n'
-                      '                          | [Back] to game           |\n'
-                      '                          | Return to [Main] Menu    |\n'
-                      '                          | [Save] and exit          |\n'
-                      '                          | [Exit] game              |\n'
-                      '                          |==========================|')
-                choice = self.user_choice(['back', 'main', 'save', 'exit'])
-                if choice == 'back':
-                    continue
-                elif choice == 'main':
+                if self.play_menu_2() == 'main':
                     return
-                elif choice == 'save':
-                    self.save_menu()
-                    self.exit()
-                elif choice == 'exit':
-                    self.exit()
 
-    def explore(self):
+    def play_menu_2(self) -> str | None:
+        print('                          |==========================|\n'
+              '                          |            MENU          |\n'
+              '                          |                          |\n'
+              '                          | [Back] to game           |\n'
+              '                          | Return to [Main] Menu    |\n'
+              '                          | [Save] and exit          |\n'
+              '                          | [Exit] game              |\n'
+              '                          |==========================|')
+        choice = self.user_choice(['back', 'main', 'save', 'exit'])
+        if choice == 'back':
+            return
+        elif choice == 'main':
+            return 'main'
+        elif choice == 'save':
+            self.save_menu()
+            self.exit()
+        elif choice == 'exit':
+            self.exit()
 
-        def search():
+    def upgrade(self) -> None:
+        print('                       |================================|\n'
+              '                       |          UPGRADE STORE         |\n'
+              '                       |                         Price  |\n'
+              '                       | [1] Titanium Scan         250  |\n'
+              '                       | [2] Enemy Encounter Scan  500  |\n'
+              '                       | [3] New Robot            1000  |\n'
+              '                       |                                |\n'
+              '                       | [Back]                         |\n'
+              '                       |================================|\n')
+        while True:
+            choice = self.user_choice(['1', '2', '3', 'back'])
+            if choice == 'back':
+                return
+            elif choice == '1':
+                if self.titanium >= 250:
+                    self.titanium -= 250
+                    self.titanium_scan = 1
+                    print('Purchase successful. You can now see how much titanium you can get from each found location.')
+                    return
+                else:
+                    print('Not enough titanium!')
+                continue
+            elif choice == '2':
+                if self.titanium >= 500:
+                    self.titanium -= 500
+                    self.encounter_scan = 1
+                    print('Purchase successful. You will now see how likely you will encounter an enemy at each found '
+                          'location.')
+                    return
+                else:
+                    print('Not enough titanium!')
+                continue
+            elif choice == '3':
+                if self.titanium >= 1000:
+                    self.titanium -= 1000
+                    self.robots_number += 1
+                    print('Purchase successful. You now have an additional robot')
+                    return
+                else:
+                    print('Not enough titanium!')
+                continue
+
+    def explore(self) -> str | None:
+
+        def search() -> None:
             num = len(self.ex_places) + 1
             if num > max_num:
                 print('Nothing more in sight.\n'
@@ -207,20 +270,38 @@ class Duskers:
 
             place = random.choice(self.places)
             titanium = random.randint(10, 100)
-            encounter_chance = random.random
-
+            encounter_chance = random.random()
             self.ex_places[str(num)] = [place, titanium, encounter_chance]
+
             for key in self.ex_places:
-                print(f'[{key}] {self.ex_places[key][0]}')
+                print(f'[{key}] {self.ex_places[key][0]}', end='')
+                if self.titanium_scan:
+                    print(f' Titanium: {self.ex_places[key][1]}', end='')
+                if self.encounter_scan:
+                    print(f' Encounter rate: {round(100*self.ex_places[key][2])}%', end='')
+                print()
             print('\n[S] to continue searching')
             return
 
-        def deploy(num: str):
-            encounter = random.random
+        def deploy(num: str) -> str | None:
+            if self.robots_number < 1:
+                print('No robots!')
+                return
 
-            print('Deploying robots\n'
-                  f'{self.ex_places[num][0]} explored successfully, with no damage taken.\n'
-                  f'Acquired {self.ex_places[num][1]} lumps of titanium')
+            encounter: bool = random.random() < self.ex_places[num][2]
+
+            print('Deploying robots')
+            if encounter:
+                print('Enemy encounter')
+                self.robots_number -= 1
+                if self.robots_number < 1:
+                    print(f'Exploration of {self.ex_places[num][0]} failed, 1 robot lost.')
+                    self.game_over()
+                    return 'main'
+                print(f'{self.ex_places[num][0]} explored successfully, 1 robot lost.')
+            else:
+                print(f'{self.ex_places[num][0]} explored successfully, with no damage taken.')
+            print(f'Acquired {self.ex_places[num][1]} lumps of titanium')
             self.titanium += self.ex_places[num][1]
             return
 
@@ -234,16 +315,35 @@ class Duskers:
             elif choice == 'back':
                 return
             else:
-                deploy(choice)
+                if deploy(choice) == 'main':
+                    return 'main'
                 return
 
+    def game_over(self):
+        print('Game Over')
+        self.high_scores = []
+        if isfile(self.h_s_file) is False:
+            with open(self.h_s_file, 'w', encoding='utf-8') as file:
+                print(self.name + ',' + str(self.titanium), file=file)
+        else:
+            with open(self.h_s_file, 'r', encoding='utf-8') as file:
+                lines = file.readlines()
+            for line in lines:
+                record = line.strip().split(',')
+                self.high_scores.append((record[0], int(record[1])))
+            self.high_scores.append((self.name, self.titanium))
+            self.high_scores = sorted(self.high_scores, key=lambda x: x[1], reverse=True)[:10]
+            with open(self.h_s_file, 'w', encoding='utf-8') as file:
+                for name, score in self.high_scores:
+                    print(name + ',' + str(score), file=file)
+
     @staticmethod
-    def exit():
-        print('Thanks for playing, bye!')
+    def exit(message: str = 'Thanks for playing, bye!') -> None:
+        print(message)
         sys.exit()
 
 
-def main():
+def main() -> None:
     game = Duskers(seed=sys.argv[1], min_duration=int(sys.argv[2]), max_duration=int(sys.argv[3]), places=sys.argv[4])
     game.main_menu()
 
