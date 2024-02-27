@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import sys
 
 
@@ -49,10 +49,10 @@ class SmartCalendar:
 
         if type_ == 'note':
             for note in addition:
-                delta = note['date_time'] - self.now
-                days = delta.days
-                hours = delta.seconds // 3600
-                minutes = (delta.seconds % 3600) / 60
+                delta: timedelta = note['date_time'] - self.now
+                days: int = delta.days
+                hours: int = delta.seconds // 3600
+                minutes: int = (delta.seconds % 3600) // 60
 
                 print(f'{note['type'].capitalize()}: "{note['text']}" - {days} day(s), {hours} hour(s), '
                       f'{minutes} minute(s)')
@@ -62,10 +62,10 @@ class SmartCalendar:
                 next_birthday = note['date_time'].replace(year=self.now.year)
                 if self.now > next_birthday:
                     next_birthday = note['date_time'].replace(year=self.now.year + 1)
-                    turns = self.now.year - note['date_time'].year + 1
+                    turns: int = self.now.year - note['date_time'].year + 1
                 else:
-                    turns = self.now.year - note['date_time'].year
-                days = (next_birthday - self.now).days
+                    turns: int = self.now.year - note['date_time'].year
+                days: int = (next_birthday - self.now).days
 
                 print(f'{note['type'].capitalize()}: "{note['text']} (turns {turns})" - {days} day(s)')
 
@@ -73,18 +73,19 @@ class SmartCalendar:
 
     def main_menu(self):
         self.print_now()
-        choice = self.choose(['add', 'view', 'delete', 'exit'])
-        if choice == 'add':
-            self.add()
-        elif choice == 'exit':
-            print('Goodbye!')
-            sys.exit()
-        elif choice == 'view':
-            print('Not implemented yet')
-            sys.exit()
-        elif choice == 'delete':
-            print('Not implemented yet')
-            sys.exit()
+        while True:
+            choice = self.choose(['add', 'view', 'delete', 'exit'])
+            if choice == 'add':
+                self.add()
+            elif choice == 'exit':
+                print('Goodbye!')
+                sys.exit()
+            elif choice == 'view':
+                print('Not implemented yet')
+                sys.exit()
+            elif choice == 'delete':
+                print('Not implemented yet')
+                sys.exit()
 
 
 def main():
@@ -94,4 +95,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
