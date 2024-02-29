@@ -5,6 +5,7 @@ import re
 
 class SmartCalendar:
     def __init__(self):
+        self.file = 'data.txt'
         self.notes: list[dict[str: str, str: datetime, str: str]] = []
         self.prop = {'note': {'format': '%Y-%m-%d %H:%M',
                               'pattern': r'^[\d]{4}-[\d]{1,2}-[\d]{1,2} [\d]{1,2}:[\d]{1,2}$',
@@ -53,6 +54,7 @@ class SmartCalendar:
         for note in notes:
             self.print_note(note)
         self.notes.extend(notes)
+        self.save_notes(notes)
 
     def view(self) -> None:
         filter_ = self.choose(['all', 'date', 'text', 'birthdays', 'notes', 'sorted'],
@@ -89,29 +91,29 @@ class SmartCalendar:
             for note in self.notes:
                 self.print_note(note)
 
-    def sort_key(self, note: dict[str: str | datetime]) -> datetime:
+    def sort_key(self, note: dict[str: str | datetime]) -> tuple[datetime, str]:
         if note['type'] == 'birthday':
-            return self.get_next_birthday(note)
-        return note['date_time']
+            return self.get_next_birthday(note), note['text']
+        return note['date_time'], note['text']
 
     def delete(self) -> None:
         length = len(self.notes)
         for i in range(length):
             print(f'{i+1}. ', end='')
-            print(self.notes[i])
+            self.print_note(self.notes[i])
 
-        while True:
-            try:
-                ids_to_delete = [int(_) for _ in input('Enter ids: ').strip().split(',')]
-                for i in ids_to_delete:
-                    if i < 1 or i > length:
-                        raise ValueError
-                break
-            except ValueError:
-                print('Incorrect number(s)')
-
-        for i in ids_to_delete:
-            del self.notes[i - 1]
+        try:
+            ids_to_delete = [int(_) for _ in input('Enter ids: ').strip().split(',')]
+            for i in ids_to_delete:
+                if i < 1 or i > length:
+                    raise ValueError
+        except ValueError:
+            pass
+        else:
+            ids_to_delete.sort(reverse=True)  # to start deleting from the end
+            for i in ids_to_delete:
+                del self.notes[i - 1]
+            self.save_notes(self.notes, 'write')
 
     def get_notes(self, num: int, type_: str) -> list[dict]:
         notes = []
@@ -156,7 +158,14 @@ class SmartCalendar:
             next_birthday: datetime = note['date_time'].replace(year=self.now.year + 1)
         return next_birthday
 
+    def load_notes(self):
+        pass
+
+    def save_notes(self, notes: list[dict[str: str | datetime]], mode: str = 'append'):
+        pass
+
     def main_menu(self) -> None:
+        self.load_notes()
         self.print_now()
         while True:
             choice = self.choose(['add', 'view', 'delete', 'exit'])
