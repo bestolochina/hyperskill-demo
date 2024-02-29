@@ -20,7 +20,8 @@ class SmartCalendar:
         self.now = datetime.now().replace(second=0, microsecond=0)
 
     @staticmethod
-    def choose(options: list | str, prompt: str = '\nEnter the command (add, view, delete, exit): ',
+    def choose(options: list | str,
+               prompt: str = '\nEnter the command (add, view, delete, exit): ',
                err: str = 'Incorrect command') -> int | str:
         while True:
             if options == 'int':
@@ -42,16 +43,21 @@ class SmartCalendar:
         print(self.now.strftime(self.prop['now']['format']))
 
     def add(self) -> None:
-        type_ = self.choose(['note', 'birthday'], 'Specify type (note, birthday): ', 'Incorrect type')
-        num = self.choose('int', self.prop[type_]['prompt1'], 'Incorrect number')
+        type_ = self.choose(['note', 'birthday'],
+                            'Specify type (note, birthday): ',
+                            'Incorrect type')
+        num = self.choose('int',
+                          self.prop[type_]['prompt1'],
+                          'Incorrect number')
         notes = self.get_notes(num, type_)
         for note in notes:
             self.print_note(note)
         self.notes.extend(notes)
 
     def view(self) -> None:
-        filter_ = self.choose(['all', 'date', 'text', 'birthdays', 'notes'],
-                              'Specify filter (all, date, text, birthdays, notes): ', 'Incorrect type')
+        filter_ = self.choose(['all', 'date', 'text', 'birthdays', 'notes', 'sorted'],
+                              'Specify filter (all, date, text, birthdays, notes, sorted): ',
+                              'Incorrect type')
         if filter_ == 'all':
             for note in self.notes:
                 self.print_note(note)
@@ -75,6 +81,18 @@ class SmartCalendar:
             for note in self.notes:
                 if note['type'] == 'note':
                     self.print_note(note)
+        elif filter_ == 'sorted':
+            order = True if self.choose(['ascending', 'descending'],
+                                        'Specify way (ascending, descending): ',
+                                        'Incorrect type') == 'descending' else False
+            self.notes.sort(key=self.sort_key, reverse=order)
+            for note in self.notes:
+                self.print_note(note)
+
+    def sort_key(self, note: dict[str: str | datetime]) -> datetime:
+        if note['type'] == 'birthday':
+            return self.get_next_birthday(note)
+        return note['date_time']
 
     def delete(self) -> None:
         length = len(self.notes)
@@ -84,15 +102,15 @@ class SmartCalendar:
 
         while True:
             try:
-                ids = [int(_) for _ in input('Enter ids: ').strip().split(',')]
-                for id_ in ids:
-                    if id_ < 1 or id_ > length:
+                ids_to_delete = [int(_) for _ in input('Enter ids: ').strip().split(',')]
+                for i in ids_to_delete:
+                    if i < 1 or i > length:
                         raise ValueError
                 break
             except ValueError:
                 print('Incorrect number(s)')
 
-        for i in range(length):
+        for i in ids_to_delete:
             del self.notes[i - 1]
 
     def get_notes(self, num: int, type_: str) -> list[dict]:
@@ -126,15 +144,17 @@ class SmartCalendar:
             print(f'Note: "{note['text']}". Remains: {days} day(s), {hours} hour(s), {minutes} minute(s)')
 
         elif note['type'] == 'birthday':
-            next_birthday: datetime = note['date_time'].replace(year=self.now.year)
-            if self.now > next_birthday:
-                next_birthday: datetime = note['date_time'].replace(year=self.now.year + 1)
-                turns: int = self.now.year - note['date_time'].year + 1
-            else:
-                turns: int = self.now.year - note['date_time'].year
+            next_birthday = self.get_next_birthday(note)
+            turns: int = next_birthday.year - note['date_time'].year
             days: int = (next_birthday - self.now).days + 1
 
             print(f'Birthday: "{note['text']} (turns {turns})". Remains: {days} day(s)')
+
+    def get_next_birthday(self, note: dict[str: str | datetime]) -> datetime:
+        next_birthday: datetime = note['date_time'].replace(year=self.now.year)
+        if self.now > next_birthday:
+            next_birthday: datetime = note['date_time'].replace(year=self.now.year + 1)
+        return next_birthday
 
     def main_menu(self) -> None:
         self.print_now()
