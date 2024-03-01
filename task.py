@@ -1,4 +1,7 @@
+from copy import deepcopy
 from datetime import datetime, timedelta
+from os.path import isfile
+import json
 import sys
 import re
 
@@ -54,7 +57,7 @@ class SmartCalendar:
         for note in notes:
             self.print_note(note)
         self.notes.extend(notes)
-        self.save_notes(notes)
+        self.save_notes()
 
     def view(self) -> None:
         filter_ = self.choose(['all', 'date', 'text', 'birthdays', 'notes', 'sorted'],
@@ -113,7 +116,7 @@ class SmartCalendar:
             ids_to_delete.sort(reverse=True)  # to start deleting from the end
             for i in ids_to_delete:
                 del self.notes[i - 1]
-            self.save_notes(self.notes, 'write')
+            self.save_notes()
 
     def get_notes(self, num: int, type_: str) -> list[dict]:
         notes = []
@@ -159,10 +162,20 @@ class SmartCalendar:
         return next_birthday
 
     def load_notes(self):
-        pass
+        if isfile(self.file):
+            with open(self.file, 'r', encoding='UTF-8') as json_file:
+                self.notes = json.load(json_file)
+            for note in self.notes:
+                note['date_time'] = datetime.strptime(note['date_time'], self.prop['now']['format'])
+        else:
+            self.notes = []
 
-    def save_notes(self, notes: list[dict[str: str | datetime]], mode: str = 'append'):
-        pass
+    def save_notes(self):
+        json_data = deepcopy(self.notes)
+        for note in json_data:
+            note['date_time'] = datetime.strftime(note['date_time'], self.prop['now']['format'])
+        with open(self.file, 'w', encoding='UTF-8') as json_file:
+            json.dump(json_data, json_file)
 
     def main_menu(self) -> None:
         self.load_notes()
