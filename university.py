@@ -6,7 +6,7 @@ class Applicant:
     first_name: str
     last_name: str
     results: dict[str: int] = field(hash=False)
-    priority: tuple[str, str, str]
+    priorities: tuple[str, str, str]
     mean_scores: dict[str: float] = field(hash=False)
 
 
@@ -48,21 +48,14 @@ class Admission:
                                            'chemistry': int(data[3]),
                                            'math': int(data[4]),
                                            'computer science': int(data[5])}
-                priority: tuple[str, str, str] = (data[6], data[7], data[8])
+                priorities: tuple[str, str, str] = (data[6], data[7], data[8])
                 mean_scores: dict[str: float] = {}
-                for preferred in priority:
+                for preferred in priorities:
                     subjects: list[str] = self.departments_acceptance[preferred]['subjects']  # subjects for department
                     scores: list[int] = [results[subject] for subject in subjects]  # subjects scores
                     mean_scores[preferred]: float = round(sum(scores) / len(scores), 1)  # mean score for the department
 
-                self.applicants.append(Applicant(first_name,
-                                                 last_name,
-                                                 {'physics': int(data[2]),
-                                                  'chemistry': int(data[3]),
-                                                  'math': int(data[4]),
-                                                  'computer science': int(data[5])},
-                                                 (data[6], data[7], data[8]),
-                                                 mean_scores))
+                self.applicants.append(Applicant(first_name, last_name, results, priorities, mean_scores))
 
     def admission(self) -> None:
         applicants = set(self.applicants)
@@ -72,7 +65,10 @@ class Admission:
                 accepted_num = len(self.selected[department])  # already accepted applicants
                 if accepted_num >= max_num:  # already accepted max number?
                     continue
-                sorted_applicants = self.sort_applicants(department, applicants, preferred)
+
+                # new set of applicants who chose this department as preferred(0 or 1 or 2)
+                department_applicants = {x for x in applicants if x.priorities[preferred] == department}
+                sorted_applicants = self.sort_applicants(department, department_applicants)
 
                 # try to fill the remaining places
                 selected_applicants = sorted_applicants[0:max_num - accepted_num]
@@ -80,28 +76,23 @@ class Admission:
                 applicants -= set(selected_applicants)  # remove the accepted applicants
 
         for department in self.selected:  # final sorting
-            self.selected[department].sort(key=lambda x: (-x.mean_scores[department], x.first_name, x.last_name))
+            self.selected[department] = self.sort_applicants(department, self.selected[department])
 
-    def sort_applicants(self, department: str,
-                        applicants: list[Applicant] | set[Applicant], preferred: int) -> list[Applicant]:
+    @staticmethod
+    def sort_applicants(department: str, applicants: list[Applicant] | set[Applicant]) -> list[Applicant]:
+        return sorted(applicants, key=lambda x: (-x.mean_scores[department], x.first_name, x.last_name))
 
-        # new set of applicants who chose this department as preferred(0 or 1 or 2)
-        department_applicants = {x for x in applicants if x.priority[preferred] == department}
-        return sorted(department_applicants,
-                      key=lambda x: (-x.mean_scores[department], x.first_name, x.last_name))
-
-    def print_admission_result(self):
+    def save_admission_results(self) -> None:
         for department, applicants in self.selected.items():
-            print('\n', department)
-            for applicant in applicants:
-                print(applicant.first_name, applicant.last_name,
-                      applicant.results[self.departments_acceptance[department]['subject']])
+            with open(department.lower() + '.txt', 'w') as file:
+                for applicant in applicants:
+                    print(applicant.first_name, applicant.last_name, applicant.mean_scores[department], file=file)
 
     def start(self) -> None:
-        self.load_applicants()
         self.set_max_accepted()
+        self.load_applicants()
         self.admission()
-        self.print_admission_result()
+        self.save_admission_results()
 
 
 def main() -> None:
