@@ -5,9 +5,10 @@ from dataclasses import dataclass, field
 class Applicant:
     first_name: str
     last_name: str
-    results: dict[str: int] = field(hash=False)
+    final_exams: dict[str: int] = field(hash=False)
+    special_exam: int
     priorities: tuple[str, str, str]
-    mean_scores: dict[str: float] = field(hash=False)
+    best_scores: dict[str: float] = field(hash=False)
 
 
 class Admission:
@@ -44,18 +45,20 @@ class Admission:
                 data = line.strip().split()
                 first_name: str = data[0]
                 last_name: str = data[1]
-                results: dict[str: int] = {'physics': int(data[2]),
-                                           'chemistry': int(data[3]),
-                                           'math': int(data[4]),
-                                           'computer science': int(data[5])}
-                priorities: tuple[str, str, str] = (data[6], data[7], data[8])
-                mean_scores: dict[str: float] = {}
+                final_exams: dict[str: int] = {'physics': int(data[2]),
+                                               'chemistry': int(data[3]),
+                                               'math': int(data[4]),
+                                               'computer science': int(data[5])}
+                special_exam: int = int(data[6])
+                priorities: tuple[str, str, str] = (data[7], data[8], data[9])
+                best_scores: dict[str: float] = {}
                 for preferred in priorities:
                     subjects: list[str] = self.departments_acceptance[preferred]['subjects']  # subjects for department
-                    scores: list[int] = [results[subject] for subject in subjects]  # subjects scores
-                    mean_scores[preferred]: float = round(sum(scores) / len(scores), 1)  # mean score for the department
+                    scores: list[int] = [final_exams[subject] for subject in subjects]  # subjects scores
+                    best_scores[preferred]: float = round(max(sum(scores) / len(scores), special_exam), 1)  # best score
 
-                self.applicants.append(Applicant(first_name, last_name, results, priorities, mean_scores))
+                self.applicants.append(Applicant(first_name, last_name, final_exams, special_exam, priorities,
+                                                 best_scores))
 
     def admission(self) -> None:
         applicants = set(self.applicants)
@@ -80,13 +83,13 @@ class Admission:
 
     @staticmethod
     def sort_applicants(department: str, applicants: list[Applicant] | set[Applicant]) -> list[Applicant]:
-        return sorted(applicants, key=lambda x: (-x.mean_scores[department], x.first_name, x.last_name))
+        return sorted(applicants, key=lambda x: (-x.best_scores[department], x.first_name, x.last_name))
 
     def save_admission_results(self) -> None:
         for department, applicants in self.selected.items():
             with open(department.lower() + '.txt', 'w') as file:
                 for applicant in applicants:
-                    print(applicant.first_name, applicant.last_name, applicant.mean_scores[department], file=file)
+                    print(applicant.first_name, applicant.last_name, applicant.best_scores[department], file=file)
 
     def start(self) -> None:
         self.set_max_accepted()
