@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from dacite import from_dict
 from random import choices
-import shelve
+import json
 import sys
 
 
@@ -8,6 +9,11 @@ import sys
 class Card:
     term: str
     definition: str
+
+
+@dataclass
+class Cards:
+    cards: list[Card]
 
 
 class Game:
