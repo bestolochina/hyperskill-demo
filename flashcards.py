@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
 from os.path import isfile
 from random import choice
+import argparse
 import json
 import sys
 import io
@@ -22,6 +23,12 @@ class Game:
     def __init__(self):
         self.cards: Cards = Cards([])
         self.output = io.StringIO()
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--import_from', type=str, default='', help="file for import from")
+        parser.add_argument('--export_to', type=str, default='', help='file for export to')
+        args = parser.parse_args()
+        self.import_file = args.import_from
+        self.export_file = args.export_to
 
     def terms(self) -> list[str]:
         return [card.term for card in self.cards.my_cards]
@@ -94,8 +101,9 @@ class Game:
         else:
             self.print_log(f'Can\'t remove "{card}": there is no such card.')
 
-    def import_(self) -> None:
-        file_name = self.input_log('File name:')
+    def import_(self, file_name: str) -> None:
+        if file_name == '':
+            return
         if not isfile(file_name):
             self.print_log('File not found.')
             return
@@ -115,8 +123,9 @@ class Game:
         length = len(import_dict['my_cards'])
         self.print_log(f'{length} cards have been loaded.')
 
-    def export(self) -> None:
-        file_name = self.input_log('File name:')
+    def export(self, file_name: str) -> None:
+        if file_name == '':
+            return
         length = len(self.cards.my_cards)
         with open(file_name, 'w', encoding='UTF-8') as file:
             json.dump(asdict(self.cards), file)
@@ -139,6 +148,8 @@ class Game:
 
     def exit(self) -> None:
         self.print_log('Bye bye!')
+        self.export(self.export_file)
+        self.output.close()
         sys.exit()
 
     def log(self) -> None:
@@ -168,6 +179,7 @@ class Game:
         self.print_log('Card statistics have been reset.')
 
     def main_menu(self) -> None:
+        self.import_(self.import_file)
         while True:
             user_choice = self.choose(['add', 'remove', 'import', 'export',
                                        'ask', 'exit', 'log', 'hardest card', 'reset stats'])
@@ -176,9 +188,9 @@ class Game:
             elif user_choice == 'remove':
                 self.remove()
             elif user_choice == 'import':
-                self.import_()
+                self.import_(self.input_log('File name:'))
             elif user_choice == 'export':
-                self.export()
+                self.export(self.input_log('File name:'))
             elif user_choice == 'ask':
                 self.ask()
             elif user_choice == 'exit':
