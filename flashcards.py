@@ -3,6 +3,7 @@ from os.path import isfile
 from random import choice
 import json
 import sys
+import io
 
 
 @dataclass
@@ -20,6 +21,7 @@ class Cards:
 class Game:
     def __init__(self):
         self.cards: Cards = Cards([])
+        self.output = io.StringIO()
 
     def terms(self) -> list[str]:
         return [card.term for card in self.cards.my_cards]
@@ -28,7 +30,7 @@ class Game:
         return [card.definition for card in self.cards.my_cards]
 
     def errors(self) -> list[int]:
-        return [card.errors for card in self.cards.my_cards]
+        return [card.errors for card in self.cards.my_cards] or [0]  # in case there are 0 cards
 
     def get_term(self, definition: str) -> str | bool:
         for card in self.cards.my_cards:
@@ -36,57 +38,66 @@ class Game:
                 return card.term
         return False
 
-    @staticmethod
-    def choose(options: list | str,
+    def print_log(self, *args, **kwargs) -> None:
+        print(*args, **kwargs)
+        print(*args, **kwargs, file=self.output)
+
+    def input_log(self, *args, **kwargs) -> str:
+        self.print_log(*args, **kwargs)
+        inp_value = input()
+        print(inp_value, file=self.output)
+        return inp_value
+
+    def choose(self, options: list | str,
                prompt: str = '\nInput the action (add, remove, import, export, ask, exit, log, hardest card, '
-                             'reset stats):\n',
+                             'reset stats):',
                err: str = 'Incorrect command') -> int | str:
         while True:
             if options == 'int':
                 try:
-                    number = int(input(prompt).strip())
+                    number = int(self.input_log(prompt).strip())
                     if number > 0:
                         return number
                     raise ValueError
                 except ValueError:
                     pass
             elif isinstance(options, list):
-                user_choice = input(prompt).strip().lower()
+                user_choice = self.input_log(prompt).strip().lower()
                 if user_choice in options:
                     return user_choice
-            print(err)
+            self.print_log(err)
 
     def add(self) -> None:
-        print('The card:')
+        self.print_log('The card:')
         while True:
-            term = input()
+            term = self.input_log('', end='')
             if term not in self.terms():
                 break
-            print(f'The card "{term}" already exists. Try again:')
+            self.print_log(f'The card "{term}" already exists. Try again:')
 
-        print('The definition of the card:')
+        self.print_log('The definition of the card:')
         while True:
-            definition = input()
+            definition = self.input_log('', end='')
             if definition not in self.definitions():
                 break
-            print(f'The definition "{definition}" already exists. Try again:')
+            self.print_log(f'The definition "{definition}" already exists. Try again:')
 
         self.cards.my_cards.append(Card(term, definition))
-        print(f'The pair ("{term}":"{definition}") has been added.')
+        self.print_log(f'The pair ("{term}":"{definition}") has been added.')
 
     def remove(self) -> None:
-        card = input('Which card?\n')
+        card = self.input_log('Which card?')
         cards = self.terms()
         if card in cards:
             self.cards.my_cards.pop(cards.index(card))
-            print('The card has been removed.')
+            self.print_log('The card has been removed.')
         else:
-            print(f'Can\'t remove "{card}": there is no such card.')
+            self.print_log(f'Can\'t remove "{card}": there is no such card.')
 
     def import_(self) -> None:
-        file_name = input('File name:\n')
+        file_name = self.input_log('File name:')
         if not isfile(file_name):
-            print('File not found.')
+            self.print_log('File not found.')
             return
         with open(file_name) as file:
             import_dict = json.load(file)
@@ -102,56 +113,59 @@ class Game:
                                                 card['errors'] + self.cards.my_cards[idx].errors)
 
         length = len(import_dict['my_cards'])
-        print(f'{length} cards have been loaded.')
+        self.print_log(f'{length} cards have been loaded.')
 
     def export(self) -> None:
-        file_name = input('File name:\n')
+        file_name = self.input_log('File name:')
         length = len(self.cards.my_cards)
         with open(file_name, 'w', encoding='UTF-8') as file:
             json.dump(asdict(self.cards), file)
-        print(f'{length} cards have been saved.')
+        self.print_log(f'{length} cards have been saved.')
 
     def ask(self) -> None:
-        num = self.choose('int', 'How many times to ask?\n', 'Invalid number')
+        num = self.choose('int', 'How many times to ask?', 'Invalid number')
         for i in range(num):
             card = choice(self.cards.my_cards)
-            user_definition = input(f'Print the definition of "{card.term}":\n')
+            user_definition = self.input_log(f'Print the definition of "{card.term}":')
             if user_definition == card.definition:
-                print('Correct!')
+                self.print_log('Correct!')
             elif user_definition in self.definitions():
                 card.errors += 1
-                print(f'Wrong. The right answer is "{card.definition}", '
-                      f'but your definition is correct for "{self.get_term(user_definition)}".')
+                self.print_log(f'Wrong. The right answer is "{card.definition}", '
+                               f'but your definition is correct for "{self.get_term(user_definition)}".')
             else:
                 card.errors += 1
-                print(f'Wrong. The right answer is "{card.definition}".')
+                self.print_log(f'Wrong. The right answer is "{card.definition}".')
 
-    @staticmethod
-    def exit() -> None:
-        print('Bye bye!')
+    def exit(self) -> None:
+        self.print_log('Bye bye!')
         sys.exit()
 
     def log(self) -> None:
-        pass
+        content = self.output.getvalue()
+        file_name = self.input_log('File name:')
+        with open(file_name, 'w') as file:
+            file.write(content)
+        self.print_log('The log has been saved.')
 
     def hardest_card(self) -> None:
         max_errors = max(self.errors())
         if max_errors == 0:
-            print('There are no cards with errors.')
+            self.print_log('There are no cards with errors.')
             return
         max_errors_terms = [card.term for card in self.cards.my_cards if card.errors == max_errors]
         if len(max_errors_terms) == 1:
-            print(f'The hardest card is "{max_errors_terms[0]}". You have {max_errors} errors answering it.')
+            self.print_log(f'The hardest card is "{max_errors_terms[0]}". You have {max_errors} errors answering it.')
         else:
-            print(f'The hardest cards are "{max_errors_terms[0]}"', end='')
+            self.print_log(f'The hardest cards are "{max_errors_terms[0]}"', end='')
             for term in max_errors_terms[1:]:
-                print(f' ,"{term}"', end='')
-            print(f'. You have {max_errors} errors answering them.')
+                self.print_log(f' ,"{term}"', end='')
+            self.print_log(f'. You have {max_errors} errors answering them.')
 
     def reset_stats(self) -> None:
         for card in self.cards.my_cards:
             card.errors = 0
-        print('Card statistics have been reset.')
+        self.print_log('Card statistics have been reset.')
 
     def main_menu(self) -> None:
         while True:
