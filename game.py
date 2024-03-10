@@ -1,13 +1,10 @@
-import numpy as np
-
-
 class KnightTourPuzzle:
     def __init__(self):
         self.board_dimensions: tuple[int, int] = self.input_2_nums(dimensions=True,
                                                                    prompt='Enter your board dimensions: ')
         self.starting_position: tuple[int, int] = self.input_2_nums()
-        self.board: np.ndarray = np.zeros(self.board_dimensions)
-        self.board[self.starting_position[0], self.starting_position[1]] = 1
+        self.board: list = [[0 for x in range(self.board_dimensions[1])] for y in range(self.board_dimensions[0])]
+        self.board[self.starting_position[0]][self.starting_position[1]] = 'X'
         self.moves: tuple = ((2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1))
 
     def input_2_nums(self, dimensions: bool = False,
@@ -35,27 +32,29 @@ class KnightTourPuzzle:
             return True
         return False
 
-    def make_move(self, y: int, x: int, m: int = 2) -> None:
+    def possible_moves(self, y: int, x: int, depth: int = 1) -> None:
+        if depth < 0:
+            return
         for move in self.moves:
             new_y, new_x = y + move[0], x + move[1]
-            if self.within_borders(new_y, new_x):
-                self.board[new_y][new_x] = m
+            if self.within_borders(new_y, new_x) and self.board[new_y][new_x] != 'X':
+                if self.board[y][x] != 'X':
+                    self.board[y][x] += 1
+                self.possible_moves(new_y, new_x, depth - 1)
 
     def print_board(self) -> None:
         cell_width: int = len(str(self.board_dimensions[0] * self.board_dimensions[1]))
         left_width: int = len(str(self.board_dimensions[0]))
-        cell_0: str = '_' * cell_width + ' '
-        cell_1: str = ' ' * (cell_width - 1) + 'X '
-        cell_2: str = ' ' * (cell_width - 1) + 'O '
-        sym: dict = {0: cell_0, 1: cell_1, 2: cell_2}
 
         print(' ' * left_width + '-' + ('-' * (cell_width + 1)) * self.board_dimensions[1] + '--')  # top border
 
         for y in range(self.board_dimensions[0] - 1, -1, -1):
             print(f'{y + 1:>{left_width}}| ', end='')  # Y coordinates
             for x in range(self.board_dimensions[1]):
-                cell = sym[self.board[y][x]]
-                print(cell, end='')
+                if self.board[y][x] == 0:
+                    print('_' * cell_width + ' ', end='')
+                else:
+                    print(' ' * (cell_width - 1) + str(self.board[y][x]) + ' ', end='')
             print('|')
 
         print(' ' * left_width + '-' + ('-' * (cell_width + 1)) * self.board_dimensions[1] + '--')  # bottom border
@@ -67,7 +66,7 @@ class KnightTourPuzzle:
 
     def start(self) -> None:
         print('\nHere are the possible moves:')
-        self.make_move(*self.starting_position)
+        self.possible_moves(self.starting_position[0], self.starting_position[1])
         self.print_board()
 
 
