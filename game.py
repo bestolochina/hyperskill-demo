@@ -9,11 +9,11 @@ class KnightTourPuzzle:
         self.starting_position: tuple[int, int] = self.input_2_nums(dimensions=False,
                                                                     prompt="Enter the knight's starting position: ",
                                                                     err='Invalid dimensions!')
-        self.board: list[list[str | int]] = \
+        self.board: list[list[str]] = \
             [['_' for x in range(self.board_dimensions[1])] for y in range(self.board_dimensions[0])]
         self.moves: tuple = ((2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1))
-        self.visited_squares: int = 1
-        self.solution = self.find_solution()
+        self.visited_squares: int = 0
+        self.moves_stack: list[tuple[int, int]] = [self.starting_position]
 
     def input_2_nums(self, dimensions: bool = False,
                      prompt: str = 'Enter your next move: ',
@@ -40,7 +40,7 @@ class KnightTourPuzzle:
             return True
         return False
 
-    def possible_moves(self, y: int, x: int, board: list[list[int | str]]) -> list[list[int]]:
+    def possible_moves(self, y: int, x: int, board: list[list[str]]) -> list[list[int]]:
         """Return list of lists of coordinates of possible moves."""
         moves = []
         for move in self.moves:
@@ -49,7 +49,7 @@ class KnightTourPuzzle:
                 moves.append([new_y, new_x])
         return moves
 
-    def get_moves_and_numbers(self, y: int, x: int, board: list[list[int | str]]) -> list[list[int]]:
+    def get_moves_and_numbers(self, y: int, x: int, board: list[list[str]]) -> list[list[int]]:
         """Return list of lists of coordinates of possible moves + number of possible next moves for each pair of
         coordinates. List is sorted by the number of next moves in descending order."""
         possible_moves = self.possible_moves(y, x, board)
@@ -59,24 +59,43 @@ class KnightTourPuzzle:
         possible_moves.sort(reverse=True, key=lambda _: (_[2]))
         return possible_moves
 
-    def find_solution(self) -> None | list[list[int | str]]:
-        board = self.board
-        y, x = self.starting_position
-        moves_stack = []
+    def backtrack(self, y: int, x: int, board: list[list[str]]) -> None:
+        board[y][x] = '_'
+        self.visited_squares -= 1
+        self.moves_stack.pop()
 
-        if len(moves_stack) == len(board) * len(board[0]):
-            return 
-        pass
+    def find_solution(self, y: int, x: int, board: list[list[str]]) -> list[list[str]] | bool:
+        """Recursive function to find the solution"""
+        self.moves_stack.append((y, x))
+        self.visited_squares += 1
+        board[y][x] = str(self.visited_squares)
+
+        possible_moves = self.get_moves_and_numbers(y, x, board)
+        if len(possible_moves) == 0:
+            if self.visited_squares == len(board) * len(board[0]):  # the board is full?
+                return board
+            else:
+                self.backtrack(y, x, board)
+                return False
+        else:
+            for move in possible_moves:
+                result = self.find_solution(move[0], move[1], board)
+                if result is False:
+                    continue
+                else:
+                    return result
+            self.backtrack(y, x, board)
+            return False
 
     def get_board_and_moves(self, y: int, x: int,
-                            board: list[list[int | str]]) -> tuple[list[list[int | str]], list[list[int]]]:
+                            board: list[list[str]]) -> tuple[list[list[str]], list[list[int]]]:
         possible_moves = self.possible_moves(y, x, board)
         for new_y, new_x in possible_moves:
-            board[new_y][new_x] = len(self.possible_moves(new_y, new_x, board))
+            board[new_y][new_x] = str(len(self.possible_moves(new_y, new_x, board)))
         return board, possible_moves
 
     @staticmethod
-    def print_board(board: list[list[str | int]]) -> None:
+    def print_board(board: list[list[str]]) -> None:
         dimension_y = len(board)
         dimension_x = len(board[0])
         cell_width: int = len(str(dimension_y * dimension_x))
@@ -87,10 +106,8 @@ class KnightTourPuzzle:
         for y in range(dimension_y - 1, -1, -1):
             print(f'{y + 1:>{left_width}}| ', end='')  # Y coordinates
             for x in range(dimension_x):
-                if board[y][x] == '_':
-                    print('_' * cell_width + ' ', end='')  # empty cell
-                else:
-                    print(' ' * (cell_width - 1) + str(board[y][x]) + ' ', end='')  # not empty cell
+                fill_char = '_' if board[y][x] == '_' else ' '
+                print(f'{board[y][x]:{fill_char}>{cell_width}} ', end='')  # cell
             print('|')
 
         print(' ' * left_width + '-' + ('-' * (cell_width + 1)) * dimension_x + '--')  # bottom border
@@ -103,6 +120,7 @@ class KnightTourPuzzle:
     def user_play(self) -> None:
         y, x = self.starting_position
         self.board[y][x] = 'X'
+        self.visited_squares = 1
 
         while True:
             board = deepcopy(self.board)
@@ -134,13 +152,14 @@ class KnightTourPuzzle:
                 break
             print('Invalid input!')
 
-        if not self.solution:
+        solution = self.find_solution(self.starting_position[0], self.starting_position[1], deepcopy(self.board))
+        if not solution:
             print('No solution exists!')
         elif user_input == 'y':
             self.user_play()
         else:
             print("\nHere's the solution!")
-            self.print_board(self.solution)
+            self.print_board(solution)
 
 
 def main() -> None:
