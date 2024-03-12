@@ -13,7 +13,7 @@ class KnightTourPuzzle:
             [['_' for x in range(self.board_dimensions[1])] for y in range(self.board_dimensions[0])]
         self.moves: tuple = ((2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1))
         self.visited_squares: int = 0
-        self.moves_stack: list[tuple[int, int]] = [self.starting_position]
+        self.moves_stack: list[tuple[int, int]] = []
 
     def input_2_nums(self, dimensions: bool = False,
                      prompt: str = 'Enter your next move: ',
@@ -59,7 +59,7 @@ class KnightTourPuzzle:
         possible_moves.sort(reverse=True, key=lambda _: (_[2]))
         return possible_moves
 
-    def backtrack(self, y: int, x: int, board: list[list[str]]) -> None:
+    def roll_back(self, y: int, x: int, board: list[list[str]]) -> None:
         board[y][x] = '_'
         self.visited_squares -= 1
         self.moves_stack.pop()
@@ -75,16 +75,16 @@ class KnightTourPuzzle:
             if self.visited_squares == len(board) * len(board[0]):  # the board is full?
                 return board
             else:
-                self.backtrack(y, x, board)
+                self.roll_back(y, x, board)
                 return False
         else:
             for move in possible_moves:
-                result = self.find_solution(move[0], move[1], board)
+                result = self.find_solution(move[0], move[1], board)  # recursion
                 if result is False:
                     continue
                 else:
                     return result
-            self.backtrack(y, x, board)
+            self.roll_back(y, x, board)
             return False
 
     def get_board_and_moves(self, y: int, x: int,
@@ -136,7 +136,7 @@ class KnightTourPuzzle:
 
             while True:
                 new_y, new_x = self.input_2_nums()
-                if (new_y, new_x) in possible_moves:
+                if [new_y, new_x] in possible_moves:
                     break
                 print('Invalid move! ', end='')
 
