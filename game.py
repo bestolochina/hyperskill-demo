@@ -13,7 +13,6 @@ class KnightTourPuzzle:
             [['_' for x in range(self.board_dimensions[1])] for y in range(self.board_dimensions[0])]
         self.moves: tuple = ((2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1))
         self.visited_squares: int = 0
-        self.moves_stack: list[tuple[int, int]] = []
 
     def input_2_nums(self, dimensions: bool = False,
                      prompt: str = 'Enter your next move: ',
@@ -49,28 +48,23 @@ class KnightTourPuzzle:
                 moves.append([new_y, new_x])
         return moves
 
-    def get_moves_and_numbers(self, y: int, x: int, board: list[list[str]]) -> list[list[int]]:
-        """Return list of lists of coordinates of possible moves + number of possible next moves for each pair of
-        coordinates. List is sorted by the number of next moves in descending order."""
+    def sorted_possible_moves(self, y: int, x: int, board: list[list[str]]) -> list[list[int]]:
+        """Return list of lists of coordinates of possible moves,
+        sorted by the number of next moves in descending order """
         possible_moves = self.possible_moves(y, x, board)
-        for move in possible_moves:
-            new_y, new_x = move
-            move.append(len(self.possible_moves(new_y, new_x, board)))
-        possible_moves.sort(reverse=True, key=lambda _: (_[2]))
+        possible_moves.sort(reverse=True, key=lambda k: len(self.possible_moves(k[0], k[1], board)))
         return possible_moves
 
     def roll_back(self, y: int, x: int, board: list[list[str]]) -> None:
         board[y][x] = '_'
         self.visited_squares -= 1
-        self.moves_stack.pop()
 
     def find_solution(self, y: int, x: int, board: list[list[str]]) -> list[list[str]] | bool:
         """Recursive function to find the solution"""
-        self.moves_stack.append((y, x))
         self.visited_squares += 1
         board[y][x] = str(self.visited_squares)
 
-        possible_moves = self.get_moves_and_numbers(y, x, board)
+        possible_moves = self.sorted_possible_moves(y, x, board)
         if len(possible_moves) == 0:
             if self.visited_squares == len(board) * len(board[0]):  # the board is full?
                 return board
@@ -87,8 +81,7 @@ class KnightTourPuzzle:
             self.roll_back(y, x, board)
             return False
 
-    def get_board_and_moves(self, y: int, x: int,
-                            board: list[list[str]]) -> tuple[list[list[str]], list[list[int]]]:
+    def get_board_and_moves(self, y: int, x: int, board: list[list[str]]) -> tuple[list[list[str]], list[list[int]]]:
         possible_moves = self.possible_moves(y, x, board)
         for new_y, new_x in possible_moves:
             board[new_y][new_x] = str(len(self.possible_moves(new_y, new_x, board)))
