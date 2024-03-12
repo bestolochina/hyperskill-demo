@@ -11,9 +11,9 @@ class KnightTourPuzzle:
                                                                     err='Invalid dimensions!')
         self.board: list[list[str | int]] = \
             [['_' for x in range(self.board_dimensions[1])] for y in range(self.board_dimensions[0])]
-        self.board[self.starting_position[0]][self.starting_position[1]] = 'X'
         self.moves: tuple = ((2, 1), (1, 2), (-1, 2), (-2, 1), (-2, -1), (-1, -2), (1, -2), (2, -1))
         self.visited_squares: int = 1
+        self.solution = self.find_solution()
 
     def input_2_nums(self, dimensions: bool = False,
                      prompt: str = 'Enter your next move: ',
@@ -40,16 +40,36 @@ class KnightTourPuzzle:
             return True
         return False
 
-    def possible_moves(self, y: int, x: int, board: list[list[int | str]]) -> set[tuple[int, int]]:
-        moves = set()
+    def possible_moves(self, y: int, x: int, board: list[list[int | str]]) -> list[list[int]]:
+        """Return list of lists of coordinates of possible moves."""
+        moves = []
         for move in self.moves:
             new_y, new_x = y + move[0], x + move[1]
             if self.within_borders(new_y, new_x) and board[new_y][new_x] == '_':
-                moves.add((new_y, new_x))
+                moves.append([new_y, new_x])
         return moves
 
+    def get_moves_and_numbers(self, y: int, x: int, board: list[list[int | str]]) -> list[list[int]]:
+        """Return list of lists of coordinates of possible moves + number of possible next moves for each pair of
+        coordinates. List is sorted by the number of next moves in descending order."""
+        possible_moves = self.possible_moves(y, x, board)
+        for move in possible_moves:
+            new_y, new_x = move
+            move.append(len(self.possible_moves(new_y, new_x, board)))
+        possible_moves.sort(reverse=True, key=lambda _: (_[2]))
+        return possible_moves
+
+    def find_solution(self) -> None | list[list[int | str]]:
+        board = self.board
+        y, x = self.starting_position
+        moves_stack = []
+
+        if len(moves_stack) == len(board) * len(board[0]):
+            return 
+        pass
+
     def get_board_and_moves(self, y: int, x: int,
-                            board: list[list[int | str]]) -> tuple[list[list[int | str]], set[tuple[int, int]]]:
+                            board: list[list[int | str]]) -> tuple[list[list[int | str]], list[list[int]]]:
         possible_moves = self.possible_moves(y, x, board)
         for new_y, new_x in possible_moves:
             board[new_y][new_x] = len(self.possible_moves(new_y, new_x, board))
@@ -80,8 +100,9 @@ class KnightTourPuzzle:
             print(f'{x + 1:>{cell_width}} ', end='')  # X coordinates
         print()
 
-    def main_cycle(self) -> None:
+    def user_play(self) -> None:
         y, x = self.starting_position
+        self.board[y][x] = 'X'
 
         while True:
             board = deepcopy(self.board)
@@ -106,10 +127,25 @@ class KnightTourPuzzle:
             self.visited_squares += 1
             y, x = new_y, new_x
 
+    def main_menu(self) -> None:
+        while True:
+            user_input = input('Do you want to try the puzzle? (y/n): ').strip().lower()
+            if user_input in {'y', 'n'}:
+                break
+            print('Invalid input!')
+
+        if not self.solution:
+            print('No solution exists!')
+        elif user_input == 'y':
+            self.user_play()
+        else:
+            print("\nHere's the solution!")
+            self.print_board(self.solution)
+
 
 def main() -> None:
     puzzle = KnightTourPuzzle()
-    puzzle.main_cycle()
+    puzzle.main_menu()
 
 
 if __name__ == '__main__':
