@@ -41,11 +41,11 @@ class Piece:
         self.current_y += 1
 
     def __str__(self):
-        piece = np.roll(self.piece, (self.current_y, self.current_x))
-        grid = ''
+        piece = np.roll(self.piece, (self.current_y, self.current_x), (0, 1))
+        grid_string = ''
         for line in piece:
-            grid += (' '.join(line) + '\n')
-        return grid
+            grid_string += (' '.join(line) + '\n')
+        return grid_string
 
 
 class Tetris:
@@ -60,9 +60,8 @@ class Tetris:
              't': [[4, 14, 24, 15], [4, 13, 14, 15], [5, 15, 25, 14], [4, 5, 6, 15]]}
         self.name = self.choose(list(self.piece_codes.keys()))
         self.board_width, self.board_height = [int(_) for _ in input().split()]
-        self.piece: Piece = self.set_piece()
-        # self.board: np.ndarray = np.ndarray(shape=(self.board_height, self.board_width), dtype='<U1')
-        # self.board.fill('-')
+        self.empty_board: Piece = Piece([[]], self.board_height, self.board_width)
+        self.piece: Piece = Piece(self.piece_codes[self.name], self.board_height, self.board_width)
 
     @staticmethod
     def choose(options: list = None, prompt: str = '', err: str = '') -> str:
@@ -74,13 +73,11 @@ class Tetris:
                 return user_choice
             print(err)
 
-    def set_piece(self):
-        name = self.choose(list(self.piece_codes.keys()))
-        return Piece(self.piece_codes[name])
-
     def main_menu(self) -> None:
         print()
+        print(self.empty_board)
         while True:
+            print(self.piece)
             user_choice = self.choose()
             if user_choice == 'rotate':
                 self.piece.rotate()
@@ -92,7 +89,6 @@ class Tetris:
                 self.piece.move_down()
             elif user_choice == 'exit':
                 return
-            print(self.piece)
 
 
 def main() -> None:
