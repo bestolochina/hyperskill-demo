@@ -2,15 +2,17 @@ import numpy as np
 
 
 class Piece:
-    def __init__(self, code: list[list[int]], width: int = 10, height: int = 4):
+    def __init__(self, code: list[list[int]], height: int = 20, width: int = 10):
         self.code = code
         self.width = width
         self.height = height
 
+        self.current_state_index: int = 0
+        self.current_y: int = 0
+        self.current_x: int = 0
         self.states_num: int = len(self.code)
         self.piece_states: list[np.ndarray] = self.make_piece(self.code)
-        self.current_state_index = 0
-        self.piece = self.piece_states[self.current_state_index]
+        self.piece: np.ndarray = self.piece_states[self.current_state_index]
 
     def make_piece(self, code) -> list[np.ndarray]:
         piece = []
@@ -25,39 +27,72 @@ class Piece:
     def rotate(self):
         self.current_state_index = (self.current_state_index + 1) % self.states_num
         self.piece = self.piece_states[self.current_state_index]
+        self.current_y += 1
+
+    def move_left(self):
+        self.current_x = (self.current_x - 1) % self.width
+        self.current_y += 1
+
+    def move_right(self):
+        self.current_x = (self.current_x + 1) % self.width
+        self.current_y += 1
+
+    def move_down(self):
+        self.current_y += 1
 
     def __str__(self):
+        piece = np.roll(self.piece, (self.current_y, self.current_x))
         grid = ''
-        for line in self.piece:
+        for line in piece:
             grid += (' '.join(line) + '\n')
         return grid
 
 
 class Tetris:
     def __init__(self):
-        self.board_width: int = 10
-        self.board_height: int = 20
         self.piece_codes: dict[str: list[list[int]]] = \
-            {'O': [[4, 14, 15, 5]],
-             'I': [[4, 14, 24, 34], [3, 4, 5, 6]],
-             'S': [[5, 4, 14, 13], [4, 14, 15, 25]],
-             'Z': [[4, 5, 15, 16], [5, 15, 14, 24]],
-             'L': [[4, 14, 24, 25], [5, 15, 14, 13], [4, 5, 15, 25], [6, 5, 4, 14]],
-             'J': [[5, 15, 25, 24], [15, 5, 4, 3], [5, 4, 14, 24], [4, 14, 15, 16]],
-             'T': [[4, 14, 24, 15], [4, 13, 14, 15], [5, 15, 25, 14], [4, 5, 6, 15]]}
-        self.empty_grid = Piece([])
+            {'o': [[4, 14, 15, 5]],
+             'i': [[4, 14, 24, 34], [3, 4, 5, 6]],
+             's': [[5, 4, 14, 13], [4, 14, 15, 25]],
+             'z': [[4, 5, 15, 16], [5, 15, 14, 24]],
+             'l': [[4, 14, 24, 25], [5, 15, 14, 13], [4, 5, 15, 25], [6, 5, 4, 14]],
+             'j': [[5, 15, 25, 24], [15, 5, 4, 3], [5, 4, 14, 24], [4, 14, 15, 16]],
+             't': [[4, 14, 24, 15], [4, 13, 14, 15], [5, 15, 25, 14], [4, 5, 6, 15]]}
+        self.name = self.choose(list(self.piece_codes.keys()))
+        self.board_width, self.board_height = [int(_) for _ in input().split()]
+        self.piece: Piece = self.set_piece()
+        # self.board: np.ndarray = np.ndarray(shape=(self.board_height, self.board_width), dtype='<U1')
+        # self.board.fill('-')
 
-    def print_piece_states(self, name: str) -> None:
-        print(self.empty_grid)
-        for num in range(5):
-            grid = Piece(self.piece_codes[name][num % len(self.piece_codes[name])])
-            print(grid)
+    @staticmethod
+    def choose(options: list = None, prompt: str = '', err: str = '') -> str:
+        if options is None:
+            options = ['rotate', 'left', 'right', 'down', 'exit']
+        while True:
+            user_choice = input(prompt).strip().lower()
+            if user_choice in options:
+                return user_choice
+            print(err)
+
+    def set_piece(self):
+        name = self.choose(list(self.piece_codes.keys()))
+        return Piece(self.piece_codes[name])
 
     def main_menu(self) -> None:
-        name = input().strip().upper()
-        self.board_width, self.board_height = [int(input()) for _ in range(2)]
         print()
-        self.print_piece_states(name)
+        while True:
+            user_choice = self.choose()
+            if user_choice == 'rotate':
+                self.piece.rotate()
+            elif user_choice == 'left':
+                self.piece.move_left()
+            elif user_choice == 'right':
+                self.piece.move_right()
+            elif user_choice == 'down':
+                self.piece.move_down()
+            elif user_choice == 'exit':
+                return
+            print(self.piece)
 
 
 def main() -> None:
