@@ -1,18 +1,18 @@
+from copy import deepcopy
+
 import numpy as np
 
 
 class Piece:
-    def __init__(self, code: list[list[int]], height: int = 20, width: int = 10):
+    def __init__(self, code: list[list[int]]):
         self.code = code
-        self.width = width
-        self.height = height
-
+        self.width = 4
+        self.height = 4
         self.current_state_index: int = 0
-        self.current_y: int = 0
-        self.current_x: int = 0
         self.states_num: int = len(self.code)
         self.piece_states: list[np.ndarray] = self.make_piece(self.code)
         self.piece: np.ndarray = self.piece_states[self.current_state_index]
+        self.next: np.ndarray = self.piece_states[(self.current_state_index + 1) % self.states_num]
 
     def make_piece(self, code) -> list[np.ndarray]:
         piece = []
@@ -20,48 +20,35 @@ class Piece:
             grid = np.ndarray(shape=(self.height, self.width), dtype='<U1')
             grid.fill('-')
             for num in state:
-                grid[num // self.width][num % self.width] = '0'
+                grid[num // self.width, num % self.width] = '0'
             piece.append(grid)
         return piece
 
     def rotate(self):
         self.current_state_index = (self.current_state_index + 1) % self.states_num
         self.piece = self.piece_states[self.current_state_index]
-        self.current_y += 1
-
-    def move_left(self):
-        self.current_x = (self.current_x - 1) % self.width
-        self.current_y += 1
-
-    def move_right(self):
-        self.current_x = (self.current_x + 1) % self.width
-        self.current_y += 1
-
-    def move_down(self):
-        self.current_y += 1
-
-    def __str__(self):
-        piece = np.roll(self.piece, (self.current_y, self.current_x), (0, 1))
-        grid_string = ''
-        for line in piece:
-            grid_string += (' '.join(line) + '\n')
-        return grid_string
+        self.next = self.piece_states[(self.current_state_index + 1) % self.states_num]
 
 
 class Tetris:
     def __init__(self):
         self.piece_codes: dict[str: list[list[int]]] = \
-            {'o': [[4, 14, 15, 5]],
-             'i': [[4, 14, 24, 34], [3, 4, 5, 6]],
-             's': [[5, 4, 14, 13], [4, 14, 15, 25]],
-             'z': [[4, 5, 15, 16], [5, 15, 14, 24]],
-             'l': [[4, 14, 24, 25], [5, 15, 14, 13], [4, 5, 15, 25], [6, 5, 4, 14]],
-             'j': [[5, 15, 25, 24], [15, 5, 4, 3], [5, 4, 14, 24], [4, 14, 15, 16]],
-             't': [[4, 14, 24, 15], [4, 13, 14, 15], [5, 15, 25, 14], [4, 5, 6, 15]]}
+            {'o': [[5, 6, 9, 10]],
+             'i': [[1, 5, 9, 13], [4, 5, 6, 7]],
+             's': [[6, 5, 9, 8], [5, 9, 10, 14]],
+             'z': [[4, 5, 9, 10], [2, 5, 6, 9]],
+             'l': [[1, 5, 9, 10], [2, 4, 5, 6], [1, 2, 6, 10], [4, 5, 6, 8]],
+             'j': [[2, 6, 9, 10], [4, 5, 6, 10], [1, 2, 5, 9], [0, 4, 5, 6]],
+             't': [[1, 5, 6, 9], [1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9]]}
+        self.starting_positions: dict[str: list[int]] = \
+            {'o': [-1, 3], 'i': [0, 3], 's': [-1, 3], 'z': [-1, 3], 'l': [0, 3], 'j': [0, 3], 't': [0, 3]}
         self.name = self.choose(list(self.piece_codes.keys()))
         self.board_width, self.board_height = [int(_) for _ in input().split()]
-        self.empty_board: Piece = Piece([[]], self.board_height, self.board_width)
-        self.piece: Piece = Piece(self.piece_codes[self.name], self.board_height, self.board_width)
+        self.board: np.ndarray = np.ndarray(shape=(self.board_height, self.board_width), dtype='<U1')
+        self.board.fill('-')
+        self.piece: Piece = Piece(self.piece_codes[self.name])
+        self.y = self.starting_positions[self.name][0]
+        self.x = self.starting_positions[self.name][1]
 
     @staticmethod
     def choose(options: list = None, prompt: str = '', err: str = '') -> str:
@@ -73,22 +60,76 @@ class Tetris:
                 return user_choice
             print(err)
 
+    def print_board(self, board: np.ndarray, piece: np.ndarray = None):
+        if piece is None:
+            print_board = self.board
+        else:
+            print_board = deepcopy(board)
+            for y in range(4):
+                for x in range(4):
+                    if piece[y, x] == '0':
+                        print_board[self.y + y, self.x + x] = '0'
+        board_str = ''
+        for line in print_board:
+            board_str += (' '.join(line) + '\n')
+        print(board_str)
+
+    def valid_move(self, piece: np.ndarray, delta_y: int, delta_x: int) -> bool:
+        """Check if the move is valid"""
+        new_y = self.y + delta_y
+        new_x = self.x + delta_x
+
+        for y in range(4):
+            for x in range(4):
+                if piece[y, x] == '0':
+                    if ((new_y + y < 0 or new_y + y >= self.board_height)  # y is bad
+                            or (new_x + x < 0 or new_x + x >= self.board_height)  # x is bad
+                            or self.board[new_y + y, new_x + x] == '0'):  # the cell is already occupied
+                        return False
+        return True
+
     def main_menu(self) -> None:
         print()
-        print(self.empty_board)
+        self.print_board(self.board)
+        self.print_board(self.board, self.piece.piece)
         while True:
-            print(self.piece)
             user_choice = self.choose()
-            if user_choice == 'rotate':
-                self.piece.rotate()
-            elif user_choice == 'left':
-                self.piece.move_left()
-            elif user_choice == 'right':
-                self.piece.move_right()
-            elif user_choice == 'down':
-                self.piece.move_down()
-            elif user_choice == 'exit':
+            if user_choice == 'exit':
                 return
+            elif user_choice == 'rotate':
+                self.rotate()
+            elif user_choice == 'left':
+                self.left()
+            elif user_choice == 'right':
+                self.right()
+            elif user_choice == 'down':
+                self.down()
+            self.print_board(self.board, self.piece.piece)
+
+    def rotate(self):
+        if self.valid_move(self.piece.next, 1, 0):  # can rotate and move?
+            self.piece.rotate()
+            self.y += 1
+        elif self.valid_move(self.piece.piece, 1, 0):  # can move without rotation?
+            self.y += 1
+
+    def left(self):
+        if self.valid_move(self.piece.piece, 1, -1):  # can move left?
+            self.y += 1
+            self.x += -1
+        elif self.valid_move(self.piece.piece, 1, 0):  # can move down?
+            self.y += 1
+
+    def right(self):
+        if self.valid_move(self.piece.piece, 1, 1):  # can move left?
+            self.y += 1
+            self.x += 1
+        elif self.valid_move(self.piece.piece, 1, 0):  # can move down?
+            self.y += 1
+
+    def down(self):
+        if self.valid_move(self.piece.piece, 1, 0):  # can move down?
+            self.y += 1
 
 
 def main() -> None:
