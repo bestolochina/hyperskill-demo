@@ -14,7 +14,7 @@ class Piece:
         self.piece: np.ndarray = self.piece_states[self.current_state_index]
         self.next: np.ndarray = self.piece_states[(self.current_state_index + 1) % self.states_num]
 
-    def make_piece(self, code) -> list[np.ndarray]:
+    def make_piece(self, code: list[list[int]]) -> list[np.ndarray]:
         piece = []
         for state in code:
             grid = np.ndarray(shape=(self.height, self.width), dtype='<U1')
@@ -24,7 +24,7 @@ class Piece:
             piece.append(grid)
         return piece
 
-    def rotate(self):
+    def rotate(self) -> None:
         self.current_state_index = (self.current_state_index + 1) % self.states_num
         self.piece = self.piece_states[self.current_state_index]
         self.next = self.piece_states[(self.current_state_index + 1) % self.states_num]
@@ -38,7 +38,7 @@ class Tetris:
              's': [[6, 5, 9, 8], [5, 9, 10, 14]],
              'z': [[4, 5, 9, 10], [2, 5, 6, 9]],
              'l': [[1, 5, 9, 10], [2, 4, 5, 6], [1, 2, 6, 10], [4, 5, 6, 8]],
-             'j': [[2, 6, 9, 10], [4, 5, 6, 10], [1, 2, 5, 9], [0, 4, 5, 6]],
+             'j': [[2, 6, 9, 10], [0, 1, 2, 6], [1, 2, 5, 9], [1, 5, 6, 7]],
              't': [[1, 5, 6, 9], [1, 4, 5, 6], [1, 4, 5, 9], [4, 5, 6, 9]]}
         self.starting_positions: dict[str: list[int]] = \
             {'o': [-1, 3], 'i': [0, 3], 's': [-1, 3], 'z': [-1, 3], 'l': [0, 3], 'j': [0, 3], 't': [0, 3]}
@@ -53,26 +53,33 @@ class Tetris:
     @staticmethod
     def choose(options: list = None, prompt: str = '', err: str = '') -> str:
         if options is None:
-            options = ['rotate', 'left', 'right', 'down', 'exit']
+            options = ['rotate', 'left', 'right', 'down', 'exit', 'piece', 'break']
         while True:
             user_choice = input(prompt).strip().lower()
             if user_choice in options:
                 return user_choice
             print(err)
 
-    def print_board(self, board: np.ndarray, piece: np.ndarray = None):
+    def print_board(self, board: np.ndarray, piece: np.ndarray = None) -> None:
         if piece is None:
-            print_board = self.board
+            print_board = self.board  # creating a board without the moving piece
         else:
-            print_board = deepcopy(board)
-            for y in range(4):
-                for x in range(4):
-                    if piece[y, x] == '0':
-                        print_board[self.y + y, self.x + x] = '0'
+            print_board = self.make_piece_static(deepcopy(board), piece)  # creating a board with the moving piece
         board_str = ''
         for line in print_board:
             board_str += (' '.join(line) + '\n')
         print(board_str)
+
+    def make_piece_static(self, board: np.ndarray = None, piece: np.ndarray = None) -> np.ndarray:
+        if board is None:
+            board = self.board
+        if piece is None:
+            piece = self.piece.piece
+        for y in range(4):
+            for x in range(4):
+                if piece[y, x] == '0':
+                    board[self.y + y, self.x + x] = '0'
+        return board
 
     def valid_move(self, piece: np.ndarray, delta_y: int, delta_x: int) -> bool:
         """Check if the move is valid"""
@@ -83,12 +90,15 @@ class Tetris:
             for x in range(4):
                 if piece[y, x] == '0':
                     if ((new_y + y < 0 or new_y + y >= self.board_height)  # y is bad
-                            or (new_x + x < 0 or new_x + x >= self.board_height)  # x is bad
+                            or (new_x + x < 0 or new_x + x >= self.board_width)  # x is bad
                             or self.board[new_y + y, new_x + x] == '0'):  # the cell is already occupied
                         return False
         return True
 
-    def main_menu(self) -> None:
+    def main_menu(self):
+
+
+    def move_menu(self) -> None:
         print()
         self.print_board(self.board)
         self.print_board(self.board, self.piece.piece)
@@ -96,6 +106,10 @@ class Tetris:
             user_choice = self.choose()
             if user_choice == 'exit':
                 return
+            elif user_choice == 'break':
+                self.break_()
+            elif user_choice == 'piece':
+                self.piece_()
             elif user_choice == 'rotate':
                 self.rotate()
             elif user_choice == 'left':
@@ -106,35 +120,37 @@ class Tetris:
                 self.down()
             self.print_board(self.board, self.piece.piece)
 
-    def rotate(self):
+    def rotate(self) -> None:
         if self.valid_move(self.piece.next, 1, 0):  # can rotate and move?
             self.piece.rotate()
             self.y += 1
-        elif self.valid_move(self.piece.piece, 1, 0):  # can move without rotation?
-            self.y += 1
+        else:
+            self.down()  # try to move down without rotation
 
-    def left(self):
+    def left(self) -> None:
         if self.valid_move(self.piece.piece, 1, -1):  # can move left?
             self.y += 1
             self.x += -1
-        elif self.valid_move(self.piece.piece, 1, 0):  # can move down?
-            self.y += 1
+        else:
+            self.down()  # try to move down
 
-    def right(self):
-        if self.valid_move(self.piece.piece, 1, 1):  # can move left?
+    def right(self) -> None:
+        if self.valid_move(self.piece.piece, 1, 1):  # can move right?
             self.y += 1
             self.x += 1
-        elif self.valid_move(self.piece.piece, 1, 0):  # can move down?
-            self.y += 1
+        else:
+            self.down()  # try to move down
 
-    def down(self):
+    def down(self) -> None:
         if self.valid_move(self.piece.piece, 1, 0):  # can move down?
             self.y += 1
+        else:
+            self.board = self.make_piece_static()
 
 
 def main() -> None:
     game = Tetris()
-    game.main_menu()
+    game.move_menu()
 
 
 if __name__ == '__main__':
