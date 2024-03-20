@@ -2,33 +2,68 @@ import os
 import sys
 
 
-def get_dir() -> tuple[str, str, str]:
-    full_dir = os.getcwd()
-    parent_dir, base_dir = os.path.split(full_dir)
-    return full_dir, parent_dir, base_dir
+class FileManager:
+    def __init__(self):
+        self.current_dir: str = ''
+        self.parent_dir: str = ''
+        self.base_dir: str = ''
+        os.chdir('module/root_folder')  # !!!
+        self.update_dir()
 
+    @staticmethod
+    def choose(options: list = None, prompt: str = '', err: str = 'Invalid command') -> list[str]:
+        if options is None:
+            options = ['quit', 'pwd', 'cd', 'ls']
+        while True:
+            user_choice = input(prompt).lower().split(maxsplit=1)
+            if user_choice[0] in options:
+                return user_choice
+            print(err)
 
-os.chdir('module/root_folder')  # !!!!!!!!!!!!!!!!!!!!!!!!!
-full_directory, parent_directory, base_directory = get_dir()
-print('Input the command')
-while True:
-    user_input = input()
-    if user_input == 'quit':
-        sys.exit()
-    elif user_input == 'pwd':
-        print(full_directory)
-    elif user_input[:3] == 'cd ':
+    def update_dir(self):
+        self.current_dir = os.getcwd()
+        self.parent_dir, self.base_dir = os.path.split(self.current_dir)
 
-        user_path = user_input[3:]
-        if user_path == '..':
-            user_path = parent_directory
+    def cd(self, path: str) -> None:
+        if path == '..':
+            path = self.parent_dir
         try:
-            os.chdir(user_path)
+            os.chdir(path)
         except OSError:
             print('Invalid command')
         else:
-            full_directory, parent_directory, base_directory = get_dir()
-            print(base_directory)
+            self.update_dir()
 
-    else:
-        print('Invalid command')
+    def ls(self, param: str) -> None:
+        if not param:
+            pass
+        elif param == 'l':
+            pass
+        elif param == 'lh':
+            pass
+        else:
+            print('Invalid command')
+
+    def start(self) -> None:
+        print('Input the command')
+        while True:
+            user_command = input()
+            if user_command[0] == 'quit':
+                sys.exit()
+            elif user_command[0] == 'pwd':
+                print(self.current_dir)
+            elif user_command[0] == 'cd':
+                self.cd(user_command[1])
+            elif user_command[0] == 'ls':
+                self.ls(user_command[1])
+            else:
+                print('Invalid command')
+
+
+def main() -> None:
+    fm = FileManager()
+    fm.start()
+
+
+if __name__ == '__main__':
+    main()
