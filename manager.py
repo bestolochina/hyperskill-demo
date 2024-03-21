@@ -5,7 +5,7 @@ import sys
 
 class FileManager:
     def __init__(self):
-        self.commands: list[str] = ['quit', 'pwd', 'cd', 'ls', 'rm', 'mv', 'mkdir']
+        self.commands: list[str] = ['quit', 'pwd', 'cd', 'ls', 'rm', 'mv', 'mkdir', 'cp', 'mv']
         self.current_dir: str = ''
         self.parent_dir: str = ''
         self.base_dir: str = ''
@@ -18,10 +18,7 @@ class FileManager:
         while True:
             user_choice = input(prompt).lower().split(maxsplit=1)
             if user_choice[0] in options:
-                if not user_choice[1:]:
-                    param = ''
-                else:
-                    param = user_choice[1]
+                param = user_choice[1] if user_choice[1:] else ''
                 return user_choice[0], param
             print(err)
 
@@ -96,10 +93,17 @@ class FileManager:
     def mv(names: str) -> None:
         names = names.split()
         if len(names) != 2:
-            print('Specify the current name of the file or directory and the new name')
+            print('Specify the current name of the file or directory and the new location and/or name')
         elif not os.path.exists(names[0]):
             print('No such file or directory')
         elif os.path.exists(names[1]):
+            if os.path.isdir(names[1]):
+                shutil.move(names[0], names[1])
+            elif os.path.isfile(names[1]):
+                if os.path.isfile(names[0]):
+
+        elif os.
+
             print('The file or directory already exists')
         else:
             os.rename(names[0], names[1])
@@ -112,6 +116,23 @@ class FileManager:
             print('The directory already exists')
         else:
             os.mkdir(name)
+
+    @staticmethod
+    def cp(paths: str) -> None:
+        paths = paths.split()
+        if len(paths) < 1:
+            print('Specify the file')
+        elif len(paths) < 2:
+            print('Specify the directory')
+        elif len(paths) > 2:
+            print('Specify the current name of the file or directory and the new location and/or name')
+        elif (not os.path.exists(paths[0]) or not os.path.isfile(paths[0])
+              or not os.path.exists(paths[1]) or not os.path.isfile(paths[1])):
+            print('No such file or directory')
+        elif os.path.exists(os.path.join(paths[1], os.path.basename(paths[0]))):
+            print(f'{os.path.basename(paths[0])} already exists in this directory')
+        else:
+            shutil.copy(paths[0], paths[1])
 
     def start(self) -> None:
         print('Input the command')
@@ -131,6 +152,8 @@ class FileManager:
                 self.mv(param)
             elif user_command == 'mkdir':
                 self.mkdir(param)
+            elif user_command == 'cp':
+                self.cp(param)
             else:
                 print('Invalid command')
 
