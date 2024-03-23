@@ -1,5 +1,6 @@
 import os
 import shutil
+import glob
 import sys
 
 
@@ -27,8 +28,8 @@ class FileManager:
         self.parent_dir, self.base_dir = os.path.split(self.current_dir)
 
     def cd(self, path: str) -> None:
-        if path == '..':
-            path = self.parent_dir
+        # if path == '..':
+        #     path = self.parent_dir
         try:
             os.chdir(path)
         except OSError:
@@ -82,6 +83,15 @@ class FileManager:
     def rm(path: str) -> None:
         if not path:
             print('Specify the file or directory')
+
+        elif path.startswith('.'):
+            files = glob.glob('*' + path)
+            if not files:
+                print(f'File extension {path} not found in this directory')
+            else:
+                for file in files:
+                    os.remove(file)
+
         elif not os.path.exists(path):
             print('No such file or directory')
         elif os.path.isfile(path):
@@ -90,23 +100,32 @@ class FileManager:
             shutil.rmtree(path)
 
     @staticmethod
-    def mv(names: str) -> None:
-        names = names.split()
-        if len(names) != 2:
+    def mv(paths: str) -> None:
+        paths = paths.split()
+        if len(paths) != 2:
             print('Specify the current name of the file or directory and the new location and/or name')
-        elif not os.path.exists(names[0]):
+
+        elif paths[0].startswith('.'):
+            files = glob.glob('*' + paths[0])
+            if not files:
+                print(f'File extension {paths[0]} not found in this directory')
+            else:
+                for file in files:
+                    if os.path.exists(os.path.join(paths[1], file)):
+                        print(f'{file} already exists in this directory. Replace? (y/n)')
+                        answer = input().strip().lower()
+                        if answer == 'n':
+                            continue
+                        else:
+                            os.remove(os.path.join(paths[1], file))
+                    shutil.move(file, paths[1])
+
+        elif not os.path.exists(paths[0]):
             print('No such file or directory')
-        elif os.path.exists(names[1]):
-            if os.path.isdir(names[1]):
-                shutil.move(names[0], names[1])
-            elif os.path.isfile(names[1]):
-                if os.path.isfile(names[0]):
-
-        elif os.
-
+        elif os.path.exists(paths[1]) and os.path.isfile(paths[1]):
             print('The file or directory already exists')
         else:
-            os.rename(names[0], names[1])
+            shutil.move(paths[0], paths[1])
 
     @staticmethod
     def mkdir(name: str) -> None:
@@ -117,8 +136,7 @@ class FileManager:
         else:
             os.mkdir(name)
 
-    @staticmethod
-    def cp(paths: str) -> None:
+    def cp(self, paths: str) -> None:
         paths = paths.split()
         if len(paths) < 1:
             print('Specify the file')
@@ -126,8 +144,23 @@ class FileManager:
             print('Specify the directory')
         elif len(paths) > 2:
             print('Specify the current name of the file or directory and the new location and/or name')
-        elif (not os.path.exists(paths[0]) or not os.path.isfile(paths[0])
-              or not os.path.exists(paths[1]) or not os.path.isfile(paths[1])):
+        elif not os.path.exists(paths[1]) or not os.path.isdir(paths[1]):
+            print('No such file or directory')
+
+        elif paths[0].startswith('.'):
+            files = glob.glob('*' + paths[0])
+            if not files:
+                print(f'File extension {paths[0]} not found in this directory')
+            else:
+                for file in files:
+                    if os.path.exists(os.path.join(paths[1], file)):
+                        print(f'{file} already exists in this directory. Replace? (y/n)')
+                        answer = input().strip().lower()
+                        if answer == 'n':
+                            continue
+                    shutil.copy(file, paths[1])
+
+        elif not os.path.exists(paths[0]) or not os.path.isfile(paths[0]):
             print('No such file or directory')
         elif os.path.exists(os.path.join(paths[1], os.path.basename(paths[0]))):
             print(f'{os.path.basename(paths[0])} already exists in this directory')
