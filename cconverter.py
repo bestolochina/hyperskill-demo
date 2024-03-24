@@ -1,14 +1,26 @@
+import requests
+import json
+
+
 class CurrencyConverter:
     def __init__(self):
-        self.rate: dict[str, dict[str, str | float]] = {'RUB': {'name': 'Russian Ruble', 'rate': 2.98},
-                                                        'ARS': {'name': 'Argentine Peso', 'rate': 0.82},
-                                                        'HNL': {'name': 'Honduran Lempira', 'rate': 0.17},
-                                                        'AUD': {'name': 'Australian Dollar', 'rate': 1.9622},
-                                                        'MAD': {'name': 'Moroccan Dirham', 'rate': 0.208}}
+        self.currency: str = ''
+        self.url: str = ''  # 'http://www.floatrates.com/daily/usd.json'
+        self.json_response: dict = {}
+        self.rate: dict = {}
         self.conicoins: float = 0
 
     def set_conicoins(self) -> None:
         self.conicoins = float(input())
+
+    def set_currency(self) -> None:
+        self.currency = input().strip().lower()
+        self.url = 'http://www.floatrates.com/daily/' + self.currency + '.json'
+        self.json_response = requests.get(self.url).json()
+
+    def print_result(self) -> None:
+        print(self.json_response['usd'])
+        print(self.json_response['eur'])
 
     def print_money(self) -> None:
         for currency in self.rate:
@@ -16,8 +28,8 @@ class CurrencyConverter:
             print(f'I will get {amount} {currency} from the sale of {self.conicoins} conicoins.')
 
     def start(self):
-        self.set_conicoins()
-        self.print_money()
+        self.set_currency()
+        self.print_result()
 
 
 def main() -> None:
