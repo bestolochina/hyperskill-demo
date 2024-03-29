@@ -1,16 +1,45 @@
+from collections import deque
 import time
 import os
 import sys
-import threading
+from threading import Thread
+
+
+class CircularQueue:
+    def __init__(self, max_size: int):
+        self.queue = deque(maxlen=max_size)
+
+    def enqueue(self, item: str) -> None:
+        if len(self.queue) == self.queue.maxlen:
+            raise IndexError("Queue is full")
+        self.queue.append(item)
+
+    def dequeue(self) -> str:
+        if len(self.queue) == 0:
+            raise IndexError("Queue is empty")
+        return self.queue.popleft()
+
+    def is_empty(self) -> bool:
+        return len(self.queue) == 0
+
+    def is_full(self) -> bool:
+        return len(self.queue) == self.queue.maxlen
+
+    def size(self) -> int:
+        return len(self.queue)
+
+    def output(self) -> list[str]:
+        return list(self.queue)
 
 
 class TrafficLight:
     def __init__(self):
         self.state: str = 'Not Started'
-        self.thread_system: threading.Thread = threading.Thread(target=self.queue_thread, name='QueueThread')
-        self.roads_num: int = 0
-        self.interval: int = 0
-        self.time_0: float = 0
+        self.thread_system: Thread = Thread(target=self.queue_thread, name='QueueThread')
+        self.roads_num: int = self.input_int(prompt='Input the number of roads: ')
+        self.roads: CircularQueue = CircularQueue(self.roads_num)
+        self.interval: int = self.input_int(prompt='Input the interval: ')
+        self.time_0: float = time.time()
         self.timer: int = 0
 
     @staticmethod
@@ -46,13 +75,22 @@ class TrafficLight:
             input()
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    @staticmethod
-    def add_road() -> None:
-        print('Road added')
+    def add_road(self) -> None:
+        road = input('Input road name: ')
+        try:
+            self.roads.enqueue(road)
+        except IndexError:
+            print('Queue is full')
+        else:
+            print(f'{road} Added!')
 
-    @staticmethod
-    def delete_road() -> None:
-        print('Road deleted')
+    def delete_road(self) -> None:
+        try:
+            road = self.roads.dequeue()
+        except IndexError:
+            print('Queue is empty')
+        else:
+            print(f'{road} deleted!')
 
     def open_system(self) -> None:
         self.timer = round(time.time() - self.time_0)
@@ -73,13 +111,13 @@ class TrafficLight:
         print(f'! {self.timer}s. have passed since system startup !')
         print(f'! Number of roads: {self.roads_num} !')
         print(f'! Interval: {self.interval} !')
+        print()
+        for road in self.roads.output():
+            print(road)
+        print()
         print('! Press "Enter" to open menu !')
 
     def start(self) -> None:
-        print('Welcome to the traffic management system!')
-        self.roads_num = self.input_int(prompt='Input the number of roads: ')
-        self.interval = self.input_int(prompt='Input the interval: ')
-        self.time_0 = time.time()
         self.clear_screen(0)
         self.state = 'Menu'
         self.thread_system.start()
@@ -103,5 +141,6 @@ class TrafficLight:
 
 
 if __name__ == '__main__':
+    print('Welcome to the traffic management system!')
     my_system = TrafficLight()
     my_system.start()
