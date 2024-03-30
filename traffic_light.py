@@ -1,23 +1,68 @@
 from collections import deque
+from dataclasses import dataclass
 import time
 import os
 import sys
 from threading import Thread
 
 
+@dataclass
+class Road:
+    name: str
+    status: bool
+    countdown: int
+
+
 class CircularQueue:
     def __init__(self, max_size: int):
         self.queue = deque(maxlen=max_size)
 
-    def enqueue(self, item: str) -> None:
+    def enqueue(self, name: str, interval: int) -> None:
         if len(self.queue) == self.queue.maxlen:
             raise IndexError("Queue is full")
-        self.queue.append(item)
 
-    def dequeue(self) -> str:
+        if len(self.queue) == 0:  # The queue is empty?
+            self.queue.append(Road(name, True, interval))
+            return
+
+        # Add a new road with the correct countdown
+        if self.queue[-1].status is True:
+            countdown = self.queue[-1].countdown
+        else:
+            countdown = self.queue[-1].countdown + interval
+        self.queue.append(Road(name, False, countdown))
+
+        # Normalize the queue countdowns after adding a new road
+        min_countdown_road = self.min_countdown_road()
+        for road in self.queue:
+            if road == min_countdown_road:
+                break
+            countdown += interval
+            road.countdown = countdown
+
+    def dequeue(self, interval: int) -> Road:
         if len(self.queue) == 0:
             raise IndexError("Queue is empty")
-        return self.queue.popleft()
+
+        return_road = self.queue.popleft()
+
+        if len(self.queue) == 0:  # The queue is empty after deletion?
+            return return_road
+
+        if return_road.status is False:  # The deleted road is closed?
+
+            # Normalize the queue countdowns after deleting a closed road
+            min_countdown_road = self.min_countdown_road()
+            countdown = self.queue[-1].countdown
+            for road in self.queue:
+                if road == min_countdown_road:
+                    break
+                countdown += interval
+                road.countdown = countdown
+        else:  # The deleted road is open?
+            pass  # No need to normalize
+
+        return return_road
 
     def is_empty(self) -> bool:
         return len(self.queue) == 0
@@ -28,14 +73,20 @@ class CircularQueue:
     def size(self) -> int:
         return len(self.queue)
 
-    def output(self) -> list[str]:
+    def output(self) -> list[Road]:
         return list(self.queue)
+
+    def min_countdown_road(self) -> Road:
+        if len(self.queue) == 0:
+            raise IndexError("Queue is empty")
+        return min(self.queue, key=lambda x: x.countdown)
 
 
 class TrafficLight:
     def __init__(self):
         self.state: str = 'Not Started'
         self.thread_system: Thread = Thread(target=self.queue_thread, name='QueueThread')
+        # self.thread_norm: Thread = Thread(target=self.queue_norm)
         self.roads_num: int = self.input_int(prompt='Input the number of roads: ')
         self.roads: CircularQueue = CircularQueue(self.roads_num)
         self.interval: int = self.input_int(prompt='Input the interval: ')
@@ -76,21 +127,27 @@ class TrafficLight:
         os.system('cls' if os.name == 'nt' else 'clear')
 
     def add_road(self) -> None:
-        road = input('Input road name: ')
+        name = input('Input road name: ')
+        self.state = 'Norm'
         try:
-            self.roads.enqueue(road)
+            self.roads.enqueue(name, self.interval)
         except IndexError:
             print('Queue is full')
         else:
-            print(f'{road} Added!')
+            print(f'{name} Added!')
+        finally:
+            self.state = 'Menu'
 
     def delete_road(self) -> None:
+        self.state = 'Norm'
         try:
-            road = self.roads.dequeue()
+            road = self.roads.dequeue(self.interval)
         except IndexError:
             print('Queue is empty')
         else:
-            print(f'{road} deleted!')
+            print(f'{road.name} deleted!')
+        finally:
+            self.state = 'Menu'
 
     def open_system(self) -> None:
         self.timer = round(time.time() - self.time_0)
@@ -99,12 +156,18 @@ class TrafficLight:
 
     def queue_thread(self) -> None:
         while self.state != 'Terminate':
+            if self.state == 'Norm':
+                continue
+            this_time = round(time.time() - self.time_0)
+            if this_time == self.timer:
+                continue
+            self.timer = this_time
+            self.time_shift()
             if self.state == 'System':
-                this_time = round(time.time() - self.time_0)
-                if this_time == self.timer:
-                    continue
-                self.timer = this_time
                 self.print_system()
+
+    def time_shift(self):
+        pass
 
     def print_system(self) -> None:
         os.system('cls' if os.name == 'nt' else 'clear')
