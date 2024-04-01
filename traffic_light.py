@@ -103,8 +103,11 @@ class CircularQueue:
         print(f'! Number of roads: {roads_num} !')
         print(f'! Interval: {interval} !')
         for road in self.queue:
-            status = 'open' if road.status is True else 'closed'
-            print(f'Road "{road.name}" will be {status} for {road.countdown}s.')
+            if road.status is True:
+                status = '\u001B[32m' + 'open'
+            else:
+                status = '\u001B[31m' + 'closed'
+            print(f'Road "{road.name}" will be {status} for {road.countdown}s.\u001B[0m')
         print('! Press "Enter" to open menu !')
 
     def open_road_index(self) -> int | None:
@@ -183,15 +186,13 @@ class TrafficLight:
             self.state = 'Menu'
 
     def open_system(self) -> None:
-        # self.timer = round(time.time() - self.time_0)
-        # self.roads.output(self.roads_num, self.interval, self.timer)
         self.state = 'System'
 
     def queue_thread(self) -> None:
         while self.state != 'Terminate':
             if self.state == 'Norm':
                 continue
-            if time.time() - self.time_0 < self.timer + 1:
+            if (time.time() - self.time_0) - self.timer < 1:
                 continue
             self.timer += 1
             self.roads.time_shift(self.interval)
