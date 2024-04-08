@@ -1,9 +1,9 @@
 import logging
 from os import getcwd
 import sys
-from nltk.tokenize import RegexpTokenizer
+from nltk.tokenize import WhitespaceTokenizer
 from nltk import ngrams
-from collections import Counter
+from collections import defaultdict, Counter
 
 
 class TextGenerator:
@@ -18,9 +18,8 @@ class TextGenerator:
         self.logger.debug(f'file_name - {self.file_name}')
         self.corpus: str = self.get_corpus()
         self.logger.debug(f'Corpus - {self.corpus[:50]} ...')
-        self.pattern: str = r'\w+'
         self.tokens: list[str] = []
-        self.bigrams: list[tuple[str, str]] = []
+        self.bigrams_dict: dict[str, dict[str, int]] = {}
 
     @staticmethod
     def get_file_name() -> str:
@@ -28,27 +27,38 @@ class TextGenerator:
         return 'corpus.txt' if user_input == '' else user_input
 
     def tokenize(self) -> None:
-        tokenizer = RegexpTokenizer(self.pattern)
+        tokenizer = WhitespaceTokenizer()
         self.tokens = tokenizer.tokenize(self.corpus)
         self.logger.debug(f'Tokens - {self.tokens[:8]} ...')
 
     def get_bigrams(self) -> None:
-        self.bigrams = [bigram for bigram in ngrams(self.tokens, 2)]
-        print(f'Number of bigrams: {len(self.bigrams)}')
-        self.logger.debug(f'Corpus - {self.bigrams[:8]} ...')
+
+        bigrams = ngrams(self.tokens, 2)
+        bigrams_counter = Counter(bigrams)
+
+        self.bigrams_dict = defaultdict(lambda: defaultdict(int))
+
+        for bigram, num in bigrams_counter.items():
+            self.bigrams_dict[bigram[0]][bigram[1]] = num
+
+        log_message: str = 'Corpus - '
+        keys: list[str] = list(self.bigrams_dict.keys())[:5]
+        for key in keys:
+            log_message += f'{self.bigrams_dict[key]}'
+        self.logger.debug(f'Corpus - {log_message} ...')
 
     def print_bigram(self) -> None:
         while True:
             try:
-                user_input = input().strip().lower()
-                if user_input == 'exit':
+                head = input().strip()
+                if head.lower() == 'exit':
                     sys.exit()
-                index_ = int(user_input)
-                print(f'Head: {self.bigrams[index_][0]}     Tail: {self.bigrams[index_][1]}')
-            except IndexError:
-                print('Index Error. Please input a value that is not greater than the number of all bigrams.')
-            except ValueError:
-                print('ValueError. Please input an integer.')
+                print(f'Head: {head}')
+                for tail, count in sorted(self.bigrams_dict[head].items(), key=lambda x: x[1], reverse=True):
+                    print(f'Tail: {tail} Count: {count}')
+                print()
+            except KeyError:
+                print('Key Error. The requested word is not in the model. Please input another word.\n')
 
     def get_corpus(self) -> str:
         with open(self.file_name, "r", encoding="utf-8") as file:
@@ -58,7 +68,6 @@ class TextGenerator:
     def start(self) -> None:
         self.tokenize()
         self.get_bigrams()
-        print()
         self.print_bigram()
 
 
