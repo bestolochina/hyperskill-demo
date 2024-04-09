@@ -1,6 +1,6 @@
 import logging
-from os import getcwd
 import sys
+from os import getcwd
 from nltk.tokenize import WhitespaceTokenizer
 from nltk import ngrams
 from collections import defaultdict, Counter
@@ -21,7 +21,9 @@ class TextGenerator:
         self.logger.debug(f'Corpus - {self.corpus[:50]} ...')
         self.tokens: list[str] = []
         self.bigrams_dict: dict[str, dict[str, int]] = {}
-        self.sentences: list[list[str]] = []
+        self.first_words: list[str] = []
+        self.last_words: list[str] = []
+        self.sequences: list[list[str]] = []
 
     def get_corpus(self) -> str:
         with open(self.file_name, "r", encoding="utf-8") as file:
@@ -36,7 +38,10 @@ class TextGenerator:
     def tokenize(self) -> None:
         tokenizer = WhitespaceTokenizer()
         self.tokens = tokenizer.tokenize(self.corpus)
-        self.logger.debug(f'Tokens - {self.tokens[:8]} ...')
+
+    def select_first_words(self):
+        self.first_words = [word for word in self.tokens if (word.istitle() and word[-1] not in {'.', '!', '?'})]
+        self.logger.debug(f'Words suitable to be first - {self.first_words[:10]} ...')
 
     def get_bigrams(self) -> None:
         bigrams = ngrams(self.tokens, 2)
@@ -47,43 +52,56 @@ class TextGenerator:
         for bigram, num in bigrams_counter.items():
             self.bigrams_dict[bigram[0]][bigram[1]] = num
 
-        log_message: str = 'Bigrams - '
-        keys: list[str] = list(self.bigrams_dict.keys())[:2]
-        for key in keys:
-            log_message += f'{self.bigrams_dict[key]}'
-        self.logger.debug(f'{log_message} ...')
-
-    def make_sentences(self) -> None:
-        first_word: str = choice(list(self.bigrams_dict.keys()))
+    def make_sequences(self) -> None:
         for i in range(10):
-            self.logger.debug(f'First word - {first_word}')
-            sentence: list[str] = self.make_sentence(first_word)
-            self.logger.debug(f'Sentence - {sentence}')
-            self.sentences.append(sentence)
-            first_word = sentence[-1]
+            sequence: list[str] = self.make_sequence()
+            self.logger.debug(f'Sentence - {sequence}')
+            self.sequences.append(sequence)
 
-    def make_sentence(self, first_word: str) -> list[str]:
-        sentence: list[str] = [first_word]
-        for i in range(9):
-            word: str = sentence[-1]
-            population: list[str] = list(self.bigrams_dict[word].keys())
-            self.logger.debug(f'Population - {population}')
-            weights: list[int] = list(self.bigrams_dict[word].values())
-            self.logger.debug(f'Weights - {weights}')
-            next_word: str = choices(population=population, weights=weights)[0]
-            self.logger.debug(f'Next word - {next_word}')
-            sentence.append(next_word)
-        return sentence
+    def make_sequence(self) -> list[str]:
+        first_word: str = choice(self.first_words)
+        self.logger.debug(f'First word - {first_word}')
+        sequence: list[str] = [first_word]
+        while not (len(sequence) >= 5 and sequence[-1][-1] in {'.', '!', '?'}):
+            previous_word: str = sequence[-1]
+            word_gen = self.next_word(previous_word)
+            while True:
+                try:
+                    next_word = next(word_gen)
+                except IndexError:
+                    word_gen = self.next_word(previous_word)
+                    next_word = next(word_gen)
+                    break
+                    # self.logger.error(f'previous word - {previous_word}\n{self.bigrams_dict[previous_word].items()}')
+                    # raise IndexError
+                self.logger.debug(f'next word - {next_word}???')
+                if next_word.istitle() and previous_word[-1] not in {'.', '!', '?'}:
+                    continue
+                break
+            sequence.append(next_word)
+            self.logger.debug(f'Current sequence - {sequence} --------')
+        return sequence
 
-    def print_sentences(self) -> None:
-        for sentence in self.sentences:
+    def next_word(self, previous_word: str):
+        population: list[str] = list(self.bigrams_dict[previous_word].keys())
+        weights: list[int] = list(self.bigrams_dict[previous_word].values())
+        while True:
+            word = choices(population=population, weights=weights)[0]
+            yield word
+            ind = population.index(word)
+            population.pop(ind)
+            weights.pop(ind)
+
+    def print_sequences(self) -> None:
+        for sentence in self.sequences:
             print(*sentence)
 
     def start(self) -> None:
         self.tokenize()
+        self.select_first_words()
         self.get_bigrams()
-        self.make_sentences()
-        self.print_sentences()
+        self.make_sequences()
+        self.print_sequences()
 
 
 def main() -> None:
