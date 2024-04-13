@@ -9,13 +9,21 @@ class StaticCodeAnalyzer:
         self.files: list[str] = []
         self.file: str = ''
         self.code: list[str] = []
+        # [S007] Too many spaces after construction_name (def or class);
+        #
+        # [S008] Class name class_name should be written in CamelCase;
+        #
+        # [S009] Function name function_name should be written in snake_case.
         self.errors: list[dict[str, str | callable]] = \
             [{'code': 'S001', 'message': 'The line is too long', 'function': self.s001},
              {'code': 'S002', 'message': 'Indentation is not a multiple of four', 'function': self.s002},
              {'code': 'S003', 'message': 'Unnecessary semicolon after a statement', 'function': self.s003},
              {'code': 'S004', 'message': 'Less than two spaces before inline comments', 'function': self.s004},
              {'code': 'S005', 'message': 'TODO found', 'function': self.s005},
-             {'code': 'S006', 'message': 'More than two blank lines preceding a code line', 'function': self.s006}]
+             {'code': 'S006', 'message': 'More than two blank lines preceding a code line', 'function': self.s006},
+             {'code': 'S007', 'message': 'Too many spaces after construction_name (def or class)', 'function': self.s007},
+             {'code': 'S008', 'message': 'Class name class_name should be written in CamelCase', 'function': self.s008},
+             {'code': 'S009', 'message': 'Function name function_name should be written in snake_case', 'function': self.s009}]
         self.line: str = ''
         self.line_number: int = 0
         self.char: str = ''
@@ -106,6 +114,18 @@ class StaticCodeAnalyzer:
         elif not ''.join(self.code[self.line_number - 3:self.line_number]):
             return True
         return False
+
+    def s007(self):  # Too many spaces after construction_name (def or class)
+        return (('def' in self.line or 'class' in self.line)
+                and re.search(pattern=r'(?:def |class )(?:\s)', string=self.line))
+
+    def s008(self):  # Class name class_name should be written in CamelCase
+        return ('class' in self.line
+                and not re.search(pattern=r'class[ ]+(?:[A-Z][a-z]+)+(?:\((?:[A-Z][a-z]+)+\))?', string=self.line))
+
+    def s009(self):  # Function name function_name should be written in snake_case
+        return ('def' in self.line
+                and not re.search(pattern=r'def[ ]+(?:[a-z_]+)+\(', string=self.line))
 
     def check(self) -> None:
         for self.line_number, self.line in enumerate(self.code):
