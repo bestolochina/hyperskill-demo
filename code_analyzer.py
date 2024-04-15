@@ -1,19 +1,33 @@
+import ast
 import sys
 import os.path
 import re
 
 
+class Visitor(ast.NodeVisitor):
+    def __init__(self):
+        self.function_names = {}
+        self.class_names = {}
+
+    def visit_FunctionDef(self, node):
+        self.function_names.update({node.lineno: node.name})
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node):
+        parent_classes = [base.id for base in node.bases if isinstance(base, ast.Name)]
+        self.class_names.update({node.lineno: [node.name, *parent_classes]})
+        self.generic_visit(node)
+
+
 class StaticCodeAnalyzer:
     def __init__(self, path: str) -> None:
+        self.visitor = Visitor()
+        self.function_names: dict[int, str] = {}
+        self.class_names: dict[int, list[str]] = {}
         self.path: str = path
-        self.files: list[str] = []
+        self.files: list[str] = self.read_files()
         self.file: str = ''
         self.code: list[str] = []
-        # [S007] Too many spaces after construction_name (def or class);
-        #
-        # [S008] Class name class_name should be written in CamelCase;
-        #
-        # [S009] Function name function_name should be written in snake_case.
         self.errors: list[dict[str, str | callable]] = \
             [{'code': 'S001', 'message': 'The line is too long', 'function': self.s001},
              {'code': 'S002', 'message': 'Indentation is not a multiple of four', 'function': self.s002},
@@ -21,24 +35,31 @@ class StaticCodeAnalyzer:
              {'code': 'S004', 'message': 'Less than two spaces before inline comments', 'function': self.s004},
              {'code': 'S005', 'message': 'TODO found', 'function': self.s005},
              {'code': 'S006', 'message': 'More than two blank lines preceding a code line', 'function': self.s006},
-             {'code': 'S007', 'message': 'Too many spaces after construction_name (def or class)', 'function': self.s007},
+             {'code': 'S007', 'message': 'Too many spaces after construction_name (def or class)',
+              'function': self.s007},
              {'code': 'S008', 'message': 'Class name class_name should be written in CamelCase', 'function': self.s008},
-             {'code': 'S009', 'message': 'Function name function_name should be written in snake_case', 'function': self.s009}]
+             {'code': 'S009', 'message': 'Function name function_name should be written in snake_case',
+              'function': self.s009},
+             {'code': 'S010', 'message': 'Argument name arg_name should be written in snake_case',
+              'function': self.s010},
+             {'code': 'S011', 'message': 'Variable var_name should be written in snake_case', 'function': self.s011},
+             {'code': 'S012', 'message': 'The default argument value is mutable', 'function': self.s012}]
         self.line: str = ''
         self.line_number: int = 0
         self.char: str = ''
         self.char_index: int = 0
 
-    def read_files(self) -> None:
+    def read_files(self) -> list[str]:
         if os.path.isfile(self.path):
-            self.files = [self.path]
+            return [self.path]
         else:
-            self.files = []
+            files_list = []
             for (root, dirs, files) in os.walk(self.path):
                 for name in files:
-                    path = os.path.join(root, name)
+                    path = str(os.path.join(root, name))
                     if path.endswith('.py'):
-                        self.files.append(path)
+                        files_list.append(path)
+            return files_list
 
     def close_quote(self) -> bool:
         while True:
@@ -120,12 +141,21 @@ class StaticCodeAnalyzer:
                 and re.search(pattern=r'(?:def |class )(?:\s)', string=self.line))
 
     def s008(self):  # Class name class_name should be written in CamelCase
-        return ('class' in self.line
-                and not re.search(pattern=r'class[ ]+(?:[A-Z][a-z]+)+(?:\((?:[A-Z][a-z]+)+\))?', string=self.line))
+        return ((names := self.class_names.get(self.line_number))
+                and not re.fullmatch(pattern=r'(?:[A-Z][A-Za-z\d_]+)', string=''.join(names)))
 
     def s009(self):  # Function name function_name should be written in snake_case
-        return ('def' in self.line
-                and not re.search(pattern=r'def[ ]+(?:[a-z_]+)+\(', string=self.line))
+        return ((name := self.function_names.get(self.line_number))
+                and not re.fullmatch(pattern=r'(?:[a-z_])(?:[a-z\d_]*)', string=name))
+
+    def s010(self):  # Argument name arg_name should be written in snake_case
+        pass
+
+    def s011(self):  # Variable var_name should be written in snake_case
+        pass
+
+    def s012(self):  # The default argument value is mutable
+        pass
 
     def check(self) -> None:
         for self.line_number, self.line in enumerate(self.code):
@@ -134,12 +164,16 @@ class StaticCodeAnalyzer:
                     print(f'{self.file}: Line {self.line_number + 1}: {error['code']} {error['message']}')
 
     def start(self) -> None:
-        self.read_files()  # get the list of files
         for self.file in self.files:
             with open(self.file) as file:
-                self.code = []
-                for line in file:
-                    self.code.append(line.rstrip('\n'))
+                self.code = file.readlines()
+            with open(self.file) as file:
+                tree = ast.parse(file.read())
+            self.visitor.visit(tree)
+            self.function_names = self.visitor.function_names
+            self.class_names = self.visitor.class_names
+            print(self.visitor.function_names)
+            print(self.visitor.class_names)
             self.check()
 
 
@@ -155,3 +189,28 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
+# def main():
+#     with open("ast_example.py", "r") as source:
+#         tree = ast.parse(source.read())
+#
+#     analyzer = Visitor()
+#     analyzer.visit(tree)
+#     print(analyzer.function_names)
+    # analyzer.report()
+#
+#
+# class Analyzer(ast.NodeVisitor):
+#     def __init__(self):
+#         self.function_names = {}
+#
+#     def visit_FunctionDef(self, node):
+#         self.function_names.update({node.lineno: node.name})
+#         self.generic_visit(node)
+#
+#     def report(self):
+#         print(self.function_names)
+#
+#
+# if __name__ == "__main__":
+#     main()
