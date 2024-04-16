@@ -1,3 +1,4 @@
+from collections import defaultdict
 import ast
 import sys
 import os.path
@@ -5,25 +6,50 @@ import re
 
 
 class Visitor(ast.NodeVisitor):
-    def __init__(self):
-        self.function_names = {}
-        self.class_names = {}
+    def __init__(self) -> None:
+        self.local_vars: dict[int, list[str]] = defaultdict(list)
+        self.current_function: str = ""
+        self.function_names: dict[int, str] = {}
+        self.function_arguments_names: dict[int, list[str]] = {}
+        self.default_args_with_values: dict[int, list[tuple[str, any]]] = {}
+        self.class_names: dict[int, list[str]] = {}
 
-    def visit_FunctionDef(self, node):
-        self.function_names.update({node.lineno: node.name})
+    def visit_FunctionDef(self, node) -> None:
+        self.current_function = node.name
+
+        self.function_names.update({node.lineno - 1: node.name})
+
+        args = [arg.arg for arg in node.args.args]
+        self.function_arguments_names[node.lineno - 1] = args
+
+        default_args = [arg.arg for arg in node.args.args[len(node.args.args) - len(node.args.defaults):]]
+        default_values = [ast.literal_eval(value) for value in node.args.defaults]
+        self.default_args_with_values[node.lineno - 1] = list(zip(default_args, default_values))
+
+        self.generic_visit(node)
+        self.current_function = ""  # for local variables
+
+    def visit_Assign(self, node) -> None:
+        if self.current_function:  # look at def visit_FunctionDef
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self.local_vars[node.lineno - 1].append(target.id)
         self.generic_visit(node)
 
-    def visit_ClassDef(self, node):
-        parent_classes = [base.id for base in node.bases if isinstance(base, ast.Name)]
-        self.class_names.update({node.lineno: [node.name, *parent_classes]})
+    def visit_ClassDef(self, node) -> None:
+        parent_classes = []
+        for base in node.bases:
+            if isinstance(base, ast.Name):
+                parent_classes.append(base.id)
+            elif isinstance(base, ast.Attribute):
+                parent_classes.append(base.attr)
+        self.class_names.update({node.lineno - 1: [node.name, *parent_classes]})
         self.generic_visit(node)
 
 
 class StaticCodeAnalyzer:
     def __init__(self, path: str) -> None:
         self.visitor = Visitor()
-        self.function_names: dict[int, str] = {}
-        self.class_names: dict[int, list[str]] = {}
         self.path: str = path
         self.files: list[str] = self.read_files()
         self.file: str = ''
@@ -76,7 +102,7 @@ class StaticCodeAnalyzer:
             return True
 
     def s001(self) -> bool:  # line length
-        return len(self.line) > 79
+        return len(self.line) > 80
 
     def s002(self) -> bool:  # indentation
         spaces: re.Match[str] = re.match(pattern=r'^( *)\w', string=self.line)
@@ -132,30 +158,35 @@ class StaticCodeAnalyzer:
     def s006(self) -> bool:  # More than two blank lines preceding a code line
         if not self.line.strip() or self.line_number < 3:
             return False
-        elif not ''.join(self.code[self.line_number - 3:self.line_number]):
+        elif not ''.join(self.code[self.line_number - 3:self.line_number]).strip():
             return True
         return False
 
-    def s007(self):  # Too many spaces after construction_name (def or class)
+    def s007(self) -> bool:  # Too many spaces after construction_name (def or class)
         return (('def' in self.line or 'class' in self.line)
                 and re.search(pattern=r'(?:def |class )(?:\s)', string=self.line))
 
-    def s008(self):  # Class name class_name should be written in CamelCase
-        return ((names := self.class_names.get(self.line_number))
-                and not re.fullmatch(pattern=r'(?:[A-Z][A-Za-z\d_]+)', string=''.join(names)))
+    def s008(self) -> bool:  # Class name class_name should be written in CamelCase
+        return ((names := self.visitor.class_names.get(self.line_number))
+                and not all(map(lambda x: re.fullmatch(pattern=r'(?:[A-Z][A-Za-z\d_]+)', string=x), names)))
 
-    def s009(self):  # Function name function_name should be written in snake_case
-        return ((name := self.function_names.get(self.line_number))
+    def s009(self) -> bool:  # Function name function_name should be written in snake_case
+        return ((name := self.visitor.function_names.get(self.line_number))
                 and not re.fullmatch(pattern=r'(?:[a-z_])(?:[a-z\d_]*)', string=name))
 
-    def s010(self):  # Argument name arg_name should be written in snake_case
-        pass
+    def s010(self) -> bool:  # Argument name arg_name should be written in snake_case
+        return ((arguments := self.visitor.function_arguments_names.get(self.line_number))
+                and not all(map(lambda x: re.fullmatch(pattern=r'[a-z_][a-z\d_]*', string=x), arguments)))
 
-    def s011(self):  # Variable var_name should be written in snake_case
-        pass
+    def s011(self) -> bool:  # Variable var_name should be written in snake_case
+        return ((names := self.visitor.local_vars.get(self.line_number))
+                and not all(map(lambda x: re.fullmatch(pattern=r'(?:[a-z_])(?:[a-z\d_]*)', string=x), names)))
 
-    def s012(self):  # The default argument value is mutable
-        pass
+    def s012(self) -> bool:  # The default argument value is mutable
+        if args_values := self.visitor.default_args_with_values.get(self.line_number):
+            for arg, value in args_values:
+                if isinstance(value, (list, set, dict)):
+                    return True
 
     def check(self) -> None:
         for self.line_number, self.line in enumerate(self.code):
@@ -169,11 +200,9 @@ class StaticCodeAnalyzer:
                 self.code = file.readlines()
             with open(self.file) as file:
                 tree = ast.parse(file.read())
+            self.visitor = Visitor()
             self.visitor.visit(tree)
-            self.function_names = self.visitor.function_names
-            self.class_names = self.visitor.class_names
-            print(self.visitor.function_names)
-            print(self.visitor.class_names)
+
             self.check()
 
 
@@ -189,28 +218,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
-# def main():
-#     with open("ast_example.py", "r") as source:
-#         tree = ast.parse(source.read())
-#
-#     analyzer = Visitor()
-#     analyzer.visit(tree)
-#     print(analyzer.function_names)
-    # analyzer.report()
-#
-#
-# class Analyzer(ast.NodeVisitor):
-#     def __init__(self):
-#         self.function_names = {}
-#
-#     def visit_FunctionDef(self, node):
-#         self.function_names.update({node.lineno: node.name})
-#         self.generic_visit(node)
-#
-#     def report(self):
-#         print(self.function_names)
-#
-#
-# if __name__ == "__main__":
-#     main()
