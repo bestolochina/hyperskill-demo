@@ -1,3 +1,4 @@
+import hashlib
 import os
 import sys
 from collections import defaultdict
@@ -10,10 +11,11 @@ class FileHandler:
         self.reverse: bool = False
         self.files: dict[int, list[str]] = defaultdict(list)
         self.sorted_files: dict[int, list[str]] = {}
+        self.size_hash_num_file: dict[int, dict[str, list[list[str]]]] = defaultdict(lambda: defaultdict(list))
 
     def user_input(self) -> None:
         self.file_format = input('Enter file format:\n')
-        print('Size sorting options:\n1. Descending\n2. Ascending\n')
+        print('\nSize sorting options:\n1. Descending\n2. Ascending')
         while True:
             sorting_option = input('\nEnter a sorting option:\n')
             if sorting_option in {'1', '2'}:
@@ -28,17 +30,15 @@ class FileHandler:
                     file_name: str = os.path.join(root, name)
                     size: int = os.path.getsize(file_name)
                     self.files[size].append(file_name)
-
-    def remove_singles(self) -> None:
-        for size, files in self.files:
-            if len(files) < 2:
+        for size in list(self.files.keys()):  # Remove singles
+            if len(self.files[size]) < 2:
                 del self.files[size]
 
     def sort_files(self) -> None:
         self.sorted_files = {i: self.files[i] for i in sorted(self.files, reverse=self.reverse)}
 
     def print_files(self) -> None:
-        for size, files in self.sorted_files:
+        for size, files in self.sorted_files.items():
             print(f'{size} bytes')
             print(*files, sep='\n')
 
@@ -49,21 +49,50 @@ class FileHandler:
             yield num
             num += 1
 
-    def check_duplicates(self) -> None:
-        user_input = input('Check for duplicates?\n')
+    @staticmethod
+    def calculate_md5(path) -> str:
+        # Open the file in binary mode for reading
+        with open(path, "rb") as file:
+            # Initialize MD5 hash object
+            md5_hash = hashlib.md5()
+
+            # Read the file in chunks to handle large files efficiently
+            chunk_size = 4096  # You can adjust the chunk size as needed
+            while chunk := file.read(chunk_size):
+                md5_hash.update(chunk)
+
+        # Get the hexadecimal representation of the MD5 hash
+        return md5_hash.hexdigest()
+
+    def calculate_hash(self) -> None:
+        user_input = input('\nCheck for duplicates?\n')
         if user_input != 'yes':
             sys.exit()
+        for size, files in self.sorted_files.items():
+            temp_files = [[self.calculate_md5(file), file] for file in files]
+            for md5, file in sorted(temp_files, key=lambda x: x[0]):
+                self.size_hash_num_file[size][md5].append(file)
+        for size in list(self.size_hash_num_file.keys()):  # Remove singles
+            for md5 in list(self.size_hash_num_file[size].keys()):
+                if len(self.size_hash_num_file[size][md5]) < 2:
+                    del self.size_hash_num_file[size][md5]
+
+    def print_files_hash(self) -> None:
         my_num = self.integer_generator()
-        for size, files in self.sorted_files:
-            ...
+        for size in self.size_hash_num_file.keys():
+            print(f'{size} bytes')
+            for md5_hash in self.size_hash_num_file[size].keys():
+                print(f'Hash: {md5_hash}')
+                for file in self.size_hash_num_file[size][md5_hash]:
+                    print(f'{next(my_num)}. {file}')
 
     def start(self) -> None:
         self.user_input()
         self.walk()
-        self.remove_singles()
         self.sort_files()
         self.print_files()
-        self.check_duplicates()
+        self.calculate_hash()
+        self.print_files_hash()
 
 
 def main() -> None:
