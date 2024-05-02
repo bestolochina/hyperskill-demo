@@ -1,4 +1,16 @@
 import sys
+import numpy as np
+
+
+class MyArray(np.ndarray):
+    def __new__(cls, input_array) -> np.ndarray:
+        obj = np.asarray(input_array).view(cls)
+        if obj.ndim != 2:
+            raise ValueError
+        return obj
+
+    def __str__(self):
+        return '\n'.join(' '.join(str(x) for x in row) for row in self)
 
 
 class NumericMatrixProcessor:
@@ -6,33 +18,31 @@ class NumericMatrixProcessor:
         self.n_rows: int = 0
         self.n_columns: int = 0
 
-    def matrix_input(self) -> list[list[int]]:
-        self.n_rows, self.n_columns = [int(_) for _ in input().split()]
-        return [[int(val) for val in input().split()] for _ in range(self.n_rows)]
-
-    @staticmethod
-    def matrix_addition(m1: list[list[int]], m2: list[list[int]]) -> list[list[int]]:
-        if len(m1) != len(m2) or len(m1[0]) != len(m2[0]):
-            raise IndexError
-        return [[m1[r][c] + m2[r][c] for c in range(len(m1[0]))] for r in range(len(m1))]
-
-    @staticmethod
-    def matrix_print(m: list[list[int]]) -> None:
-        [print(*m[r], sep=' ') for r in range(len(m))]
-
-    def start(self) -> None:
-        matrix1 = self.matrix_input()
-        matrix2 = self.matrix_input()
+    def matrix_input(self) -> np.ndarray:
         try:
-            self.matrix_print(self.matrix_addition(matrix1, matrix2))
-        except IndexError:
-            print('ERROR')
-            sys.exit()
+            self.n_rows, self.n_columns = [int(_) for _ in input().split()]
+            return MyArray([[int(val) for val in input().split()] for _ in range(self.n_rows)])
+        except ValueError:
+            self.error()
+
+    def int_input(self) -> int:
+        try:
+            return int(input())
+        except ValueError:
+            self.error()
+
+    @staticmethod
+    def error() -> None:
+        print('ERROR')
+        sys.exit()
 
 
 def main() -> None:
     processor = NumericMatrixProcessor()
-    processor.start()
+    matrix = processor.matrix_input()
+    num = processor.int_input()
+    result = num * matrix
+    print(result)
 
 
 if __name__ == '__main__':
