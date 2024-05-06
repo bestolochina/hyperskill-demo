@@ -26,6 +26,7 @@ class NumericMatrixProcessor:
                                              '3': self.mat_dot_mat,
                                              '4': self.mat_transpose,
                                              '5': self.mat_determinant,
+                                             '6': self.mat_inverse,
                                              '0': self.exit}
 
     def main_menu(self) -> None:
@@ -35,6 +36,7 @@ class NumericMatrixProcessor:
                   '3. Multiply matrices\n'
                   '4. Transpose matrix\n'
                   '5. Calculate a determinant\n'
+                  '6. Inverse matrix\n'
                   '0. Exit')
             choice = input('Your choice: ')
             if choice in self.choices.keys():
@@ -83,10 +85,17 @@ class NumericMatrixProcessor:
         if choice == '4':
             return mat[::-1, ::]
 
-    def mat_determinant(self):
+    def mat_determinant(self) -> float:
         mat = self.matrix_input('Enter size of matrix: ', 'Enter matrix:')
         try:
             return np.linalg.det(mat)
+        except np.linalg.LinAlgError:
+            raise ShapeException
+
+    def mat_inverse(self) -> np.ndarray:
+        mat = self.matrix_input('Enter size of matrix: ', 'Enter matrix:')
+        try:
+            return np.linalg.inv(mat)
         except np.linalg.LinAlgError:
             raise ShapeException
 
