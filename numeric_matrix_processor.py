@@ -25,6 +25,7 @@ class NumericMatrixProcessor:
                                              '2': self.mat_times_num,
                                              '3': self.mat_dot_mat,
                                              '4': self.mat_transpose,
+                                             '5': self.mat_determinant,
                                              '0': self.exit}
 
     def main_menu(self) -> None:
@@ -33,6 +34,7 @@ class NumericMatrixProcessor:
                   '2. Multiply matrix by a constant\n'
                   '3. Multiply matrices\n'
                   '4. Transpose matrix\n'
+                  '5. Calculate a determinant\n'
                   '0. Exit')
             choice = input('Your choice: ')
             if choice in self.choices.keys():
@@ -80,6 +82,13 @@ class NumericMatrixProcessor:
             return mat[::, ::-1]
         if choice == '4':
             return mat[::-1, ::]
+
+    def mat_determinant(self):
+        mat = self.matrix_input('Enter size of matrix: ', 'Enter matrix:')
+        try:
+            return np.linalg.det(mat)
+        except np.linalg.LinAlgError:
+            raise ShapeException
 
     @staticmethod
     def exit() -> None:
