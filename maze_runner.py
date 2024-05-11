@@ -1,5 +1,7 @@
 import random
+import pickle
 import sys
+import os.path
 
 
 class Maze:
@@ -40,6 +42,7 @@ class Maze:
             passage: tuple[int, int] = random.choice(self.find_passages(chosen))
             self.connect_passages(chosen, passage)
         self.create_entrance_exit()
+        self.display_maze()
 
     def set_first_passage(self) -> None:
         y: int = random.randint(1, self.size - 2)
@@ -67,10 +70,23 @@ class Maze:
         return passages
 
     def load_maze(self) -> None:
-        pass
+        path = input()
+        if os.path.exists(path) and os.path.isfile(path):
+            with open(path, 'rb') as file:
+                try:
+                    self.grid = pickle.load(file)
+                except pickle.PickleError:
+                    print('Cannot load the maze. It has an invalid format')
+        else:
+            print(f'The file {path} does not exist')
 
     def save_maze(self) -> None:
-        pass
+        path = input()
+        try:
+            with open(path, 'wb') as file:
+                pickle.dump(self.grid, file)
+        except pickle.PickleError:
+            print("Sorry, can't save the maze")
 
     @staticmethod
     def exit() -> None:
@@ -84,15 +100,26 @@ class Maze:
         self.grid[y][x] = 1
         self.add_frontiers(chosen)
 
-    def create_entrance_exit(self) -> None:
-        y, x = self.first[0], 0
-        while self.grid[y][x] != 1:
-            self.grid[y][x] = 1
-            x += 1
-        y, x = self.first[0], self.size - 1
-        while self.grid[y][x] != 1:
-            self.grid[y][x] = 1
-            x -= 1
+    def create_entrance_exit(self):
+        y_nums = [_ for _ in list(range(2 - (self.first[0] % 2), self.size - 1))[::2]]
+        x_nums = [_ for _ in list(range(2 - (self.first[1] % 2), self.size - 1))[::2]]
+        points = ([(y_nums[0], x) for x in x_nums]  # available entrances and exits
+                  + [(y_nums[-1], x) for x in x_nums]
+                  + [(y, x_nums[0]) for y in y_nums[1:-1]]
+                  + [(y, x_nums[-1]) for y in y_nums[1:-1]])
+        gates = random.choices(population=points, k=2)  # choose entrance and exit
+
+        for gate in gates:
+            if gate[1] == x_nums[0]:
+                cells = [(gate[0], _) for _ in range(0, gate[1])]  # the gate is in the left column
+            elif gate[1] == x_nums[-1]:
+                cells = [(gate[0], _) for _ in range(self.size - 1, gate[1], -1)]  # the gate is in the right column
+            elif gate[0] == y_nums[0]:
+                cells = [(_, gate[1]) for _ in range(0, gate[0])]  # the gate is in the top row
+            else:
+                cells = [(_, gate[1]) for _ in range(self.size - 1, gate[0], -1)]  # the gate is in the bottom row
+            for cell in cells:
+                self.grid[cell[0]][cell[1]] = 1
 
     def display_maze(self) -> None:
         for line in self.grid:
