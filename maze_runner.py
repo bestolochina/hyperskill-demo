@@ -142,10 +142,13 @@ class Maze:
                         char = '  '
                     case 2:
                         char = '//'
+                    case _:
+                        char = '??'
                 print(char, end='')
             print()
 
     def find_escape(self):
+        self.visited_nodes = set()
         size: int = len(self.grid)
         y_nums: list[int] = [_ for _ in range(size)]
         x_nums: list[int] = [_ for _ in range(size)][1:-1]  # exclude the first and last because they "are" in y_nums
@@ -160,9 +163,10 @@ class Maze:
             if self.grid[y][x]:
                 self.entrance = (y, x)
                 self.logger.debug(f'entrance - {self.entrance}')
-                if self.recursion(y, x) == 'path':
-                    self.display_maze()
-                    return
+                break
+        if self.recursion(y, x) == 'path':
+            self.display_maze()
+            return
 
     def recursion(self, y: int, x: int) -> str | None:
         self.visited_nodes.add((y, x))
@@ -175,13 +179,16 @@ class Maze:
         adjacent_nodes = []
         for offset in offsets:
             yy, xx = y + offset[0], x + offset[1]
+            self.logger.debug(f'yy = {yy} , xx = {xx}')
             if (0 <= yy < len(self.grid) and 0 <= xx < len(self.grid)
-                    and self.grid[yy][xx] != 0
-                    and (yy, xx) not in self.visited_nodes):
+                    and self.grid[yy][xx] == 1 and (yy, xx) not in self.visited_nodes):
                 adjacent_nodes.append((yy, xx))
+
+        self.logger.debug(f'adjacent nodes - {adjacent_nodes}')
 
         for yy, xx in adjacent_nodes:
             result = self.recursion(yy, xx)
+            self.logger.debug(f'result - {(yy, xx)} - {result}')
             if result == 'path':
                 self.grid[y][x] = 2
                 return 'path'
@@ -189,6 +196,7 @@ class Maze:
 
 
 def main() -> None:
+    sys.setrecursionlimit(3000)
     maze = Maze()
     maze.main_menu()
 
