@@ -2,24 +2,33 @@ import random
 import pickle
 import sys
 import os.path
+import logging
 
 
 class Maze:
     def __init__(self) -> None:
+        logging.basicConfig(filename=r'newfile.log',
+                            format='%(asctime)s %(message)s',
+                            filemode='a')
+        self.logger: logging.Logger = logging.getLogger()
+        self.logger.setLevel(logging.DEBUG)
         self.size: int = 0
         self.first: tuple[int, int] = (0, 0)
         self.grid: list[list[int]] = []
         self.passages: list[tuple[int, int]] = []
         self.frontiers: list[tuple[int, int]] = []
+        self.entrance: tuple[int, int] = (0, 0)
+        self.visited_nodes: set[tuple[int, int]] = set()
         self.menu: dict = {'1': {'prompt': 'Generate a new maze', 'func': self.generate_maze},
                            '2': {'prompt': 'Load a maze', 'func': self.load_maze},
                            '3': {'prompt': 'Save the maze', 'func': self.save_maze},
                            '4': {'prompt': 'Display the maze', 'func': self.display_maze},
+                           '5': {'prompt': 'Find the escape.', 'func': self.find_escape},
                            '0': {'prompt': 'Exit', 'func': self.exit}}
 
     def main_menu(self) -> None:
         while True:
-            nums = ['1', '2', '3', '4', '0'] if self.grid else ['1', '2', '0']
+            nums = ['1', '2', '3', '4', '5', '0'] if self.grid else ['1', '2', '0']
             print('=== Menu ===')
             for num in nums:
                 print(f'{num}. {self.menu[num]['prompt']}')
@@ -103,11 +112,13 @@ class Maze:
     def create_entrance_exit(self):
         y_nums = [_ for _ in list(range(2 - (self.first[0] % 2), self.size - 1))[::2]]
         x_nums = [_ for _ in list(range(2 - (self.first[1] % 2), self.size - 1))[::2]]
-        points = ([(y_nums[0], x) for x in x_nums]  # available entrances and exits
-                  + [(y_nums[-1], x) for x in x_nums]
-                  + [(y, x_nums[0]) for y in y_nums[1:-1]]
-                  + [(y, x_nums[-1]) for y in y_nums[1:-1]])
-        gates = random.choices(population=points, k=2)  # choose entrance and exit
+        border_nodes = ([(y_nums[0], x) for x in x_nums]  # available entrances and exits
+                        + [(y_nums[-1], x) for x in x_nums]
+                        + [(y, x_nums[0]) for y in y_nums[1:-1]]
+                        + [(y, x_nums[-1]) for y in y_nums[1:-1]])
+        gates = [random.choice(border_nodes)]
+        border_nodes.remove(gates[0])
+        gates.append(random.choice(border_nodes))
 
         for gate in gates:
             if gate[1] == x_nums[0]:
@@ -124,8 +135,57 @@ class Maze:
     def display_maze(self) -> None:
         for line in self.grid:
             for cell in line:
-                print('  ' if cell == 1 else '██', end='')
+                match cell:
+                    case 0:
+                        char = '██'
+                    case 1:
+                        char = '  '
+                    case 2:
+                        char = '//'
+                print(char, end='')
             print()
+
+    def find_escape(self):
+        size: int = len(self.grid)
+        y_nums: list[int] = [_ for _ in range(size)]
+        x_nums: list[int] = [_ for _ in range(size)][1:-1]  # exclude the first and last because they "are" in y_nums
+        border_nodes: list[tuple[int, int]] = ([(0, x) for x in x_nums]  # top
+                                               + [(size - 1, x) for x in x_nums]  # bottom
+                                               + [(y, 0) for y in y_nums]  # left
+                                               + [(y, size - 1) for y in y_nums])  # right
+
+        self.logger.debug(f'size - {size}, y_nums - {y_nums}, x_nums - {x_nums},\nborder nodes - {border_nodes}')
+
+        for y, x in border_nodes:
+            if self.grid[y][x]:
+                self.entrance = (y, x)
+                self.logger.debug(f'entrance - {self.entrance}')
+                if self.recursion(y, x) == 'path':
+                    self.display_maze()
+                    return
+
+    def recursion(self, y: int, x: int) -> str | None:
+        self.visited_nodes.add((y, x))
+        self.logger.debug(f'node - ({y, x}) = {self.grid[y][x]}')
+        if (y, x) != self.entrance and (y == 0 or y == len(self.grid) - 1 or x == 0 or x == len(self.grid[0]) - 1):  # exit?
+            self.grid[y][x] = 2
+            return 'path'
+
+        offsets = [(0, 1), (1, 0), (0, -1), (-1, 0)]
+        adjacent_nodes = []
+        for offset in offsets:
+            yy, xx = y + offset[0], x + offset[1]
+            if (0 <= yy < len(self.grid) and 0 <= xx < len(self.grid)
+                    and self.grid[yy][xx] != 0
+                    and (yy, xx) not in self.visited_nodes):
+                adjacent_nodes.append((yy, xx))
+
+        for yy, xx in adjacent_nodes:
+            result = self.recursion(yy, xx)
+            if result == 'path':
+                self.grid[y][x] = 2
+                return 'path'
+        return
 
 
 def main() -> None:
