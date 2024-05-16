@@ -12,6 +12,20 @@ def bubble_sort(unsorted: list) -> list:
     return sorted_list
 
 
+def binary_search(array, value):
+    low = 0
+    high = len(array) - 1
+    while low <= high:
+        middle = int((low+high)/2)
+        if array[middle].rating == value:
+            return middle
+        elif array[middle].rating > value:
+            high = middle - 1
+        else:
+            low = middle + 1
+    return -1
+
+
 Movie = namedtuple('Movie', ['title', 'rating'])
 movies: list = []
 path = r'C:\Users\T480\Downloads\movies.csv'
@@ -24,5 +38,14 @@ with open(path, 'r', encoding='utf-8') as csv_file:
 
 sorted_movies = bubble_sort(movies)
 
-for movie in sorted_movies:
-    print(f'{movie.title} - {movie.rating}')
+movie_6_index = binary_search(sorted_movies, 6)
+left_index = movie_6_index
+while sorted_movies[left_index - 1].rating == 6:
+    left_index -= 1
+
+right_index = movie_6_index
+while sorted_movies[right_index + 1].rating == 6:
+    right_index += 1
+
+for i in range(left_index, right_index + 1):
+    print(f'{sorted_movies[i].title} - {sorted_movies[i].rating}')
