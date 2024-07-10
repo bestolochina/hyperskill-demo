@@ -1,5 +1,5 @@
-from collections import defaultdict
-from typing import List, Dict
+from random import choice
+from typing import List, Dict, Tuple
 
 
 def enter_0_1() -> str:
@@ -21,13 +21,12 @@ def get_string() -> str:
             break
         print(f'Current data length is {length}, {min_length - length} symbols left')
     print('Final data string:')
-    print(my_string)
+    print(my_string, '\n\n')
     return my_string
 
 
 def divide_string(my_string: str) -> Dict[str, List[int]]:
     ind = 0
-    # my_dict = defaultdict(lambda: [0, 0])
     my_dict = {'000': [0, 0],
                '001': [0, 0],
                '010': [0, 0],
@@ -36,6 +35,7 @@ def divide_string(my_string: str) -> Dict[str, List[int]]:
                '101': [0, 0],
                '110': [0, 0],
                '111': [0, 0]}
+
     while ind + 3 < len(my_string):
         short = my_string[ind: ind + 4]
         key_str = my_string[ind:ind + 3]
@@ -45,11 +45,44 @@ def divide_string(my_string: str) -> Dict[str, List[int]]:
     return my_dict
 
 
+def prediction(u_string: str, pre_dict: Dict[str, List[int]]) -> str:
+    pre_string = ''
+    for i in range(3, len(u_string)):
+        key = u_string[i - 3: i]
+        if pre_dict[key][0] > pre_dict[key][1]:
+            char = '0'
+        elif pre_dict[key][0] < pre_dict[key][1]:
+            char = '1'
+        else:
+            char = choice('01')
+        pre_string += char
+    return pre_string
+
+
+def compare(u_string: str, pre_string: str) -> Tuple[int, int, float]:
+    correct = 0
+    total = len(pre_string)
+    for i in range(len(pre_string)):
+        if u_string[i + 3] == pre_string[i]:
+            correct += 1
+    percentage = round(100 * correct / total, 2)
+    return correct, total, percentage
+
+
 def main():
     full_string = get_string()
     my_dict = divide_string(full_string)
-    for key, value in my_dict.items():
-        print(f'{key}: {value[0]},{value[1]}')
+
+    while True:
+        user_string = input('Please enter a test string containing 0 or 1:\n')
+        if len(user_string) >= 4:
+            break
+    my_prediction = prediction(user_string, my_dict)
+
+    print(f'predictions:\n{my_prediction}')
+    print()
+    correct, total, percentage = compare(user_string, my_prediction)
+    print(f'Computer guessed {correct} out of {total} symbols right ({percentage} %)')
 
 
 if __name__ == '__main__':
