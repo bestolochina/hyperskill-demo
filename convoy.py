@@ -4,6 +4,7 @@ import numpy as np
 import re
 from pathlib import Path
 import json
+from lxml import etree
 
 
 class Convoy:
@@ -109,7 +110,9 @@ class Convoy:
 
         # Connect to the SQLite database
         table_name: str = 'convoy'
+        row_name = 'vehicle'
         json_file: str = db_file[:-4] + 'json'
+        xml_file: str = db_file[:-4] + 'xml'
         conn = sqlite3.connect(db_file)
         cursor = conn.cursor()
 
@@ -130,11 +133,20 @@ class Convoy:
         with open(json_file, 'w') as file:
             json.dump(my_dict, file, indent=4)
 
+        # Read data from the table into a pandas DataFrame
+        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
+
         conn.close()
+
+        # Convert DataFrame to XML and save to a file
+        df.to_xml(xml_file, index=False, root_name=table_name, row_name=row_name, pretty_print=True, xml_declaration=False)
 
         report: str = ('1 vehicle was' if count == 1 else f'{count} vehicles were') + f' saved into {json_file}'
         print(report)
+        report: str = ('1 vehicle was' if count == 1 else f'{count} vehicles were') + f' saved into {xml_file}'
+        print(report)
         # print(my_dict)
+        # print(df.to_xml(index=False, root_name=table_name, row_name=row_name, pretty_print=True, xml_declaration=False))
 
 
 def main():
