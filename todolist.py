@@ -1,15 +1,16 @@
 import sys
 from datetime import datetime
-from sqlalchemy import create_engine, MetaData, Column, Integer, String, Date
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, Date
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+from datetime import datetime
 
-# Create an engine and bind it to the SQLite database
-engine = create_engine('sqlite:///todo.db', connect_args={'check_same_thread': False})
+# Create the base class for declarative models
 Base = declarative_base()
 
 
 # Define your table model
-class Task(Base):  # Renamed class from Table to Task for clarity
+class Task(Base):
     __tablename__ = 'task'
 
     id = Column(Integer, primary_key=True)
@@ -20,10 +21,13 @@ class Task(Base):  # Renamed class from Table to Task for clarity
         return f"<Task(task='{self.task}', deadline={self.deadline})>"
 
 
-# Create the tables in the database
+# Create the engine
+engine = create_engine('sqlite:///todo.db', connect_args={'check_same_thread': False})
+
+# Create all tables
 Base.metadata.create_all(engine)
 
-# Create a session for interacting with the database
+# Create a session
 Session = sessionmaker(bind=engine)
 session = Session()
 
