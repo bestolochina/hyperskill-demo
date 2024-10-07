@@ -1,9 +1,8 @@
 import sys
-from datetime import datetime
 from sqlalchemy import create_engine, Column, Integer, String, Date
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Create the base class for declarative models
 Base = declarative_base()
@@ -35,7 +34,9 @@ session = Session()
 def menu() -> callable:
     menu_dict: dict[str, [tuple[str, callable]]] = {
         '1': ("1) Today's tasks", today_tasks),
-        '2': ("2) Add a task", add_task),
+        '2': ("2) Week's tasks", week_tasks),
+        '3': ("3) All tasks", all_tasks),
+        '4': ("4) Add a task", add_task),
         '0': ("0) Exit", exit_menu),
     }
     for key in menu_dict:
@@ -46,24 +47,50 @@ def menu() -> callable:
 
 
 def today_tasks():
-    rows = session.query(Task).all()
-    print('Today:')
+    today = datetime.today()
+    rows = session.query(Task).filter(Task.deadline == today.date()).all()
+    print(f'Today {today.day} {today.strftime('%b')}:')
     if not rows:
         print('Nothing to do!')
     else:
-        for row in rows:
-            print(f'{row.id}. {row.task}')
+        for num, row in enumerate(rows, start=1):
+            print(f'{num}. {row.task}. {row.deadline.day} {row.deadline.strftime('%b')}')
+    print()
+    return
+
+
+def week_tasks():
+    today = datetime.today()
+    for delta in range(7):
+        day = today + timedelta(days=delta)
+        rows = session.query(Task).filter(Task.deadline == day.date()).all()
+        print(f'{day.strftime('%A')} {day.day} {day.strftime('%b')}:')
+        if not rows:
+            print('Nothing to do!')
+        else:
+            for num, row in enumerate(rows, start=1):
+                print(f'{num}. {row.task}. {row.deadline.day} {row.deadline.strftime('%b')}')
+        print()
+    return
+
+
+def all_tasks():
+    rows = session.query(Task).order_by(Task.deadline).all()
+    print('All tasks:')
+    for num, row in enumerate(rows, start=1):
+        print(f'{num}. {row.task}. {row.deadline.day} {row.deadline.strftime('%b')}')
     print()
     return
 
 
 def add_task():
     task = input('Enter a task\n')
-    new_row = Task(task=task)
+    deadline = datetime.strptime(input('Enter a deadline\n'), '%Y-%m-%d')
+    new_row = Task(task=task, deadline=deadline)
     session.add(new_row)
     session.commit()
     print('The task has been added!\n')
-    pass
+    return
 
 
 def exit_menu():
