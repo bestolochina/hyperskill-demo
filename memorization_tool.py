@@ -1,11 +1,31 @@
 from typing import Callable
 import sys
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy.orm import sessionmaker
+
+# Create the base class for declarative models
+Base = declarative_base()
 
 
-class FlashCard:
-    def __init__(self, question, answer):
-        self.question: str = question
-        self.answer: str = answer
+# Define your table model
+class FlashCard(Base):
+    __tablename__ = 'flashcard'
+
+    id = Column(Integer, primary_key=True)
+    question = Column(String)
+    answer = Column(String)
+
+
+# Create the engine
+engine = create_engine('sqlite:///flashcard.db', connect_args={'check_same_thread': False})
+
+# Create all tables
+Base.metadata.create_all(engine)
+
+# Create a session
+Session = sessionmaker(bind=engine)
+session = Session()
 
 
 class MemorizationTool:
@@ -19,7 +39,6 @@ class MemorizationTool:
             '1': {'prompt': '1. Add a new flashcard', 'function': self.add_new_flashcard},
             '2': {'prompt': '2. Exit', 'function': self.exit_add_flashcards_menu},
         }
-        self.flashcards: list[FlashCard] = []
 
     def add_flashcards(self):
         while self.process_menu(self.add_flashcards_menu)() != 'return to main':
@@ -27,15 +46,16 @@ class MemorizationTool:
 
     def practice_flashcards(self):
         print()
-        if not self.flashcards:
+        rows = session.query(FlashCard).all()
+        if not rows:
             print('There is no flashcard to practice!\n')
         else:
-            for flashcard in self.flashcards:
-                print(f'Question: {flashcard.question}')
-                while (user_choice := input('Please press "y" to see the answer or press "n" to skip:\n')) not in {'y','n'}:
+            for row in rows:
+                print(f'Question: {row.question}')
+                while (user_choice := input('Please press "y" to see the answer or press "n" to skip:\n')) not in {'y', 'n'}:
                     continue
                 if user_choice == 'y':
-                    print(f'\nAnswer: {flashcard.answer}\n')
+                    print(f'\nAnswer: {row.answer}\n')
 
     @staticmethod
     def exit_main_menu() -> None:
@@ -48,7 +68,9 @@ class MemorizationTool:
             continue
         while not (answer := input('Answer:\n').strip()):
             continue
-        self.flashcards.append(FlashCard(question, answer))
+        new_row = FlashCard(question=question, answer=answer)
+        session.add(new_row)
+        session.commit()
         print()
 
     @staticmethod
