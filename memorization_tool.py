@@ -31,39 +31,29 @@ session = Session()
 class MemorizationTool:
     def __init__(self):
         self.main_menu: dict[str, dict[str, str | Callable]] = {
-            '1': {'prompt': '1. Add flashcards', 'function': self.add_flashcards},
+            '1': {'prompt': '\n1. Add flashcards', 'function': self.add_flashcards},
             '2': {'prompt': '2. Practice flashcards', 'function': self.practice_flashcards},
             '3': {'prompt': '3. Exit', 'function': self.exit_main_menu},
         }
         self.add_flashcards_menu: dict[str, dict[str, str | Callable]] = {
-            '1': {'prompt': '1. Add a new flashcard', 'function': self.add_new_flashcard},
+            '1': {'prompt': '\n1. Add a new flashcard', 'function': self.add_new_flashcard},
             '2': {'prompt': '2. Exit', 'function': self.exit_add_flashcards_menu},
+        }
+        self.practice_flashcards_menu: dict[str, dict[str, str | Callable]] = {
+            'y': {'prompt': 'press "y" to see the answer:', 'function': self.see_answer},
+            'n': {'prompt': 'press "n" to skip:', 'function': self.skip},
+            'u': {'prompt': 'press "u" to update:', 'function': self.update},
+        }
+        self.update_menu: dict[str, dict[str, str | Callable]] = {
+            'd': {'prompt': 'press "d" to delete the flashcard:', 'function': self.delete},
+            'e': {'prompt': 'press "e" to edit the flashcard:', 'function': self.edit},
         }
 
     def add_flashcards(self):
         while self.process_menu(self.add_flashcards_menu)() != 'return to main':
             continue
 
-    def practice_flashcards(self):
-        print()
-        rows = session.query(FlashCard).all()
-        if not rows:
-            print('There is no flashcard to practice!\n')
-        else:
-            for row in rows:
-                print(f'Question: {row.question}')
-                while (user_choice := input('Please press "y" to see the answer or press "n" to skip:\n')) not in {'y', 'n'}:
-                    continue
-                if user_choice == 'y':
-                    print(f'\nAnswer: {row.answer}\n')
-
-    @staticmethod
-    def exit_main_menu() -> None:
-        print('\nBye!\n')
-        sys.exit()
-
     def add_new_flashcard(self) -> None:
-        print()
         while not (question := input('Question:\n').strip()):
             continue
         while not (answer := input('Answer:\n').strip()):
@@ -71,11 +61,50 @@ class MemorizationTool:
         new_row = FlashCard(question=question, answer=answer)
         session.add(new_row)
         session.commit()
-        print()
 
     @staticmethod
     def exit_add_flashcards_menu() -> str:
         return 'return to main'
+
+    def practice_flashcards(self):
+        rows = session.query(FlashCard).all()
+        if not rows:
+            print('There is no flashcard to practice!\n')
+        else:
+            for row in rows:
+                print(f'\nQuestion: {row.question}')
+                self.process_menu(self.practice_flashcards_menu)(row)
+
+    def see_answer(self, row):
+        print(f'Answer: {row.answer}')
+
+    def skip(self, row):
+        pass
+
+    def update(self, row):
+        self.process_menu(self.update_menu)(row)
+
+    def edit(self, row):
+        new_question = input(f'\ncurrent question: {row.question}\nplease write a new question:\n')
+        new_answer = input(f'\ncurrent answer: {row.answer}\nplease write a new answer:\n')
+        # entry = session.query(FlashCard).get(row.id)
+        # entry.answer = new_answer
+        if new_question:
+            row.question = new_question
+        if new_answer:
+            row.answer = new_answer
+        session.commit()
+
+    def delete(self, row):
+        # entry = session.query(FlashCard).get(row.id)
+        session.delete(row)
+        session.commit()
+
+
+    @staticmethod
+    def exit_main_menu() -> None:
+        print('\nBye!\n')
+        sys.exit()
 
     @staticmethod
     def process_menu(menu: dict[str, dict[str, str | Callable]]) -> Callable:
