@@ -15,6 +15,7 @@ class FlashCard(Base):
     id = Column(Integer, primary_key=True)
     question = Column(String)
     answer = Column(String)
+    box = Column(Integer)
 
 
 # Create the engine
@@ -44,6 +45,10 @@ class MemorizationTool:
             'n': {'prompt': 'press "n" to skip:', 'function': self.skip},
             'u': {'prompt': 'press "u" to update:', 'function': self.update},
         }
+        self.learning_menu: dict[str, dict[str, str | Callable]] = {
+            'y': {'prompt': 'press "y" if your answer is correct:', 'function': self.correct_answer},
+            'n': {'prompt': 'press "n" if your answer is wrong:', 'function': self.wrong_answer},
+        }
         self.update_menu: dict[str, dict[str, str | Callable]] = {
             'd': {'prompt': 'press "d" to delete the flashcard:', 'function': self.delete},
             'e': {'prompt': 'press "e" to edit the flashcard:', 'function': self.edit},
@@ -58,7 +63,7 @@ class MemorizationTool:
             continue
         while not (answer := input('Answer:\n').strip()):
             continue
-        new_row = FlashCard(question=question, answer=answer)
+        new_row = FlashCard(question=question, answer=answer, box=1)
         session.add(new_row)
         session.commit()
 
@@ -77,6 +82,19 @@ class MemorizationTool:
 
     def see_answer(self, row):
         print(f'Answer: {row.answer}')
+        self.process_menu(self.learning_menu)(row)
+
+    def correct_answer(self, row):
+        if row.box >= 3:
+            session.delete(row)
+        else:
+            row.box += 1
+        session.commit()
+
+    def wrong_answer(self, row):
+        if row.box > 1:
+            row.box = 1
+            session.commit()
 
     def skip(self, row):
         pass
