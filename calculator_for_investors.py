@@ -3,7 +3,7 @@ import os
 import sys
 from typing import Callable
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine, Column, String, Float
+from sqlalchemy import create_engine, Column, String, Float, func, desc
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 import pandas as pd
@@ -51,12 +51,13 @@ class Menu:
                 break
             else:
                 print('Invalid option!\n')
+                break
 
 
 class Calculator:
     def __init__(self, session: sessionmaker.object_session):
         self.session = session
-        self.main_menu = Menu('MAIN MENU',
+        self.main_menu = Menu('\nMAIN MENU',
                               {'0': {'prompt': '0 Exit', 'function': self.main_exit},
                                '1': {'prompt': '1 CRUD operations', 'function': self.main_crud},
                                '2': {'prompt': '2 Show top ten companies by criteria', 'function': self.main_show}})
@@ -203,13 +204,49 @@ class Calculator:
         print('Not implemented!')
 
     def top_list_nd(self) -> None:
-        print('Not implemented!')
+        results = (
+            self.session.query(
+                Financial.ticker,
+                func.round(Financial.net_debt / Financial.ebitda, 2).label('nd_ebitda_ratio')
+            )
+            .filter(Financial.ebitda.isnot(None))
+            .order_by(desc('nd_ebitda_ratio'))
+            .limit(10)
+            .all()
+        )
+        print('TICKER ND/EBITDA')
+        for ticker, nd_ebitda_ratio in results:
+            print(ticker, nd_ebitda_ratio)
 
     def top_list_roe(self) -> None:
-        print('Not implemented!')
+        results = (
+            self.session.query(
+                Financial.ticker,
+                func.round(Financial.net_profit / Financial.equity, 2).label('roe')
+            )
+            .filter(Financial.equity.isnot(None))
+            .order_by(desc('roe'))
+            .limit(10)
+            .all()
+        )
+        print('TICKER ROE')
+        for ticker, roe in results:
+            print(ticker, roe)
 
     def top_list_rda(self) -> None:
-        print('Not implemented!')
+        results = (
+            self.session.query(
+                Financial.ticker,
+                func.round(Financial.net_profit / Financial.assets, 2).label('roa')
+            )
+            .filter(Financial.assets.isnot(None))
+            .order_by(desc('roa'))
+            .limit(10)
+            .all()
+        )
+        print('TICKER ROA')
+        for ticker, roa in results:
+            print(ticker, roa)
 
 
 def main():
@@ -245,7 +282,7 @@ def main():
             session.rollback()
             # print("Data already exists in the database, skipping data insertion.")
 
-    print('Welcome to the Investor Program!\n')
+    print('Welcome to the Investor Program!')
 
     calculator = Calculator(session=session)
     while True:
