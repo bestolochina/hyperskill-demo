@@ -22,51 +22,45 @@ def generate_url(src: str, dst: str, word: str) -> str:
     return f'https://context.reverso.net/translation/{src}-{dst}/{word}'
 
 
+def get_content(page: requests.Response) -> tuple[list[str], list[str]]:
+    # Parse the HTML content
+    soup = BeautifulSoup(page.text, 'html.parser')
+
+    # Find the terms with the class "display-term"
+    # terms = [_.text.strip() for _ in soup.find_all('span', class_='display-term')]
+    terms = [_.text.strip() for _ in soup.select('#translations-content .display-term')]
+
+    # Extract the text of sentences
+    # examples = [_.text.strip() for _ in soup.find_all('div', class_='ltr')]
+    examples = [_.text.strip() for _ in soup.select('#examples-content .example .ltr')]
+
+    return terms, examples
+
+
+def output_content(dst: str, terms: list[str], examples: list[str]) -> None:
+    print(f'\n{dst.title()} Translations:')
+    [print(term) for term in terms]
+
+    print(f'\n{dst.title()} Examples:')
+    for i in range(0, len(examples), 2):
+        print(examples[i])
+        print(examples[i + 1])
+        print()
+
+
 def main():
-    url = generate_url(*enter_data())
+    src, dst, word = enter_data()
+    url = generate_url(src, dst, word)
     headers = {'User-Agent': 'Mozilla/5.0 AppleWebKit/537.36 Chrome/93.0.4577.82 Safari/537.36'}
     while True:
         page = requests.get(url, headers=headers)
         if page.status_code == requests.codes.ok:
             print(page.status_code, 'OK')
-            print('Translations')
             break
 
-    # Parse the HTML content
-    soup = BeautifulSoup(page.text, 'html.parser')
+    terms, examples = get_content(page)
 
-    # Find the spans with the class "display-term"
-    terms = [_.text for _ in soup.find_all('span', class_='display-term')]
-
-    print(terms)
-
-    # Find the section containing the examples
-    # examples_section = soup.find('section', id='examples-content')
-    # Find all divs with class "example" within the examples section
-    # examples = examples_section.find_all('div', class_='example')
-    examples = soup.find_all('div', class_='example')
-
-    # Extract and print the text from each pair of sentences
-    # for example in examples:
-    #     # Get the English (source) sentence
-    #     src_sentence = example.find('div', class_='src').find('span', class_='text').get_text(strip=True)
-    #     # Get the French (target) sentence
-    #     trg_sentence = example.find('div', class_='trg').find('span', class_='text').get_text(strip=True)
-    #     # Print the sentences
-    #     print(f"English: {src_sentence}")
-    #     print(f"French: {trg_sentence}")
-    #     print("-" * 40)  # Separator for readability
-
-    sentences_text = []
-    for example in examples:
-        # Get the raw sentences
-        sentences = example.find_all('span', class_='text')
-
-        # Get the pure sentences
-        for sentence in sentences:
-            sentences_text.append(sentence.get_text().strip())
-
-    print(sentences_text)
+    output_content(dst, terms, examples)
 
 
 if __name__ == '__main__':
