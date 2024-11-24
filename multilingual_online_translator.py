@@ -3,23 +3,39 @@ import requests
 
 
 def enter_data() -> tuple[str, str, str]:
-    while True:
-        language = input('Type "en" if you want to translate from French into English, or "fr" if you want to translate'
-                         ' from English into French:\n')
-        if language == 'en':
-            src, dst = 'french', 'english'
-            break
-        elif language == 'fr':
-            src, dst = 'english', 'french'
-            break
+    languages: dict[str, str] = {
+        '1': 'Arabic',
+        '2': 'German',
+        '3': 'English',
+        '4': 'Spanish',
+        '5': 'French',
+        '6': 'Hebrew',
+        '7': 'Japanese',
+        '8': 'Dutch',
+        '9': 'Polish',
+        '10': 'Portuguese',
+        '11': 'Romanian',
+        '12': 'Russian',
+        '13': 'Turkish',
+    }
+    print('Hello, welcome to the translator. Translator supports:')
+    for num, language in languages.items():
+        print(f'{num}. {language}')
 
+    src = choose_language('Type the number of your language:\n', languages)
+    dst = choose_language('Type the number of language you want to translate to:\n', languages)
     word = input('Type the word you want to translate:\n')
-    print(f'You chose "{language}" as the language to translate "{word}" to.')
     return src, dst, word
 
 
+def choose_language(prompt: str, languages: dict[str, str]) -> str:
+    while (num := input(prompt)) not in languages:
+        continue
+    return languages[num]
+
+
 def generate_url(src: str, dst: str, word: str) -> str:
-    return f'https://context.reverso.net/translation/{src}-{dst}/{word}'
+    return f'https://context.reverso.net/translation/{src.lower()}-{dst.lower()}/{word.lower()}'
 
 
 def get_content(page: requests.Response) -> tuple[list[str], list[str]]:
@@ -38,10 +54,10 @@ def get_content(page: requests.Response) -> tuple[list[str], list[str]]:
 
 
 def output_content(dst: str, terms: list[str], examples: list[str]) -> None:
-    print(f'\n{dst.title()} Translations:')
+    print(f'\n{dst} Translations:')
     [print(term) for term in terms]
 
-    print(f'\n{dst.title()} Examples:')
+    print(f'\n{dst} Examples:')
     for i in range(0, len(examples), 2):
         print(examples[i])
         print(examples[i + 1])
@@ -55,7 +71,7 @@ def main():
     while True:
         page = requests.get(url, headers=headers)
         if page.status_code == requests.codes.ok:
-            print(page.status_code, 'OK')
+            # print(page.status_code, 'OK')
             break
 
     terms, examples = get_content(page)
