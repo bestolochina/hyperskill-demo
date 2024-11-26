@@ -2,8 +2,7 @@ from bs4 import BeautifulSoup
 import requests
 
 
-def enter_data() -> tuple[str, str, str]:
-    languages: dict[str, str] = {
+languages: dict[str, str] = {
         '1': 'Arabic',
         '2': 'German',
         '3': 'English',
@@ -18,12 +17,16 @@ def enter_data() -> tuple[str, str, str]:
         '12': 'Russian',
         '13': 'Turkish',
     }
+
+def enter_data() -> tuple[str, str, str]:
     print('Hello, welcome to the translator. Translator supports:')
     for num, language in languages.items():
         print(f'{num}. {language}')
 
     src = choose_language('Type the number of your language:\n', languages)
-    dst = choose_language('Type the number of language you want to translate to:\n', languages)
+    dst = choose_language(
+        "Type the number of a language you want to translate to or '0' to translate to all languages:\n",
+        {'0': 'all', **languages})
     word = input('Type the word you want to translate:\n')
     return src, dst, word
 
@@ -48,35 +51,55 @@ def get_content(page: requests.Response) -> tuple[list[str], list[str]]:
 
     # Extract the text of sentences
     # examples = [_.text.strip() for _ in soup.find_all('div', class_='ltr')]
-    examples = [_.text.strip() for _ in soup.select('#examples-content .example .ltr')]
+    examples = [_.text.strip() for _ in soup.select('#examples-content .example .text')]
 
     return terms, examples
 
 
-def output_content(dst: str, terms: list[str], examples: list[str]) -> None:
+def output_content(word: str, dst: str, terms: list[str], examples: list[str]) -> None:
+    file_name: str = word + '.txt'
+
     print(f'\n{dst} Translations:')
-    [print(term) for term in terms]
-
+    print(terms[0])
     print(f'\n{dst} Examples:')
-    for i in range(0, len(examples), 2):
-        print(examples[i])
-        print(examples[i + 1])
-        print()
+    print(examples[0])
+    print(examples[1])
+    # print()
+
+    with open(file_name, 'a', encoding='utf-8') as f:
+        print(f'\n{dst} Translations:', file=f)
+        print(terms[0], file=f)
+        print(f'\n{dst} Examples:', file=f)
+        print(examples[0], file=f)
+        print(examples[1], file=f)
+        # print('', file=f)
 
 
-def main():
-    src, dst, word = enter_data()
-    url = generate_url(src, dst, word)
+def get_page(url: str) -> requests.Response:
     headers = {'User-Agent': 'Mozilla/5.0 AppleWebKit/537.36 Chrome/93.0.4577.82 Safari/537.36'}
     while True:
         page = requests.get(url, headers=headers)
         if page.status_code == requests.codes.ok:
-            # print(page.status_code, 'OK')
             break
+    return page
 
-    terms, examples = get_content(page)
 
-    output_content(dst, terms, examples)
+def main():
+    src, dst, word = enter_data()
+    if dst == 'all':
+        for dst in languages.values():
+            if src == dst:
+                continue
+            url = generate_url(src, dst, word)
+            page = get_page(url)
+            terms, examples = get_content(page)
+            output_content(word, dst, terms, examples)
+
+    else:
+        url = generate_url(src, dst, word)
+        page = get_page(url)
+        terms, examples = get_content(page)
+        output_content(word, dst, terms, examples)
 
 
 if __name__ == '__main__':
