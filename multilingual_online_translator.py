@@ -1,40 +1,48 @@
 from bs4 import BeautifulSoup
 import requests
-
+import sys
 
 languages: dict[str, str] = {
-        '1': 'Arabic',
-        '2': 'German',
-        '3': 'English',
-        '4': 'Spanish',
-        '5': 'French',
-        '6': 'Hebrew',
-        '7': 'Japanese',
-        '8': 'Dutch',
-        '9': 'Polish',
-        '10': 'Portuguese',
-        '11': 'Romanian',
-        '12': 'Russian',
-        '13': 'Turkish',
-    }
+    '1': 'Arabic',
+    '2': 'German',
+    '3': 'English',
+    '4': 'Spanish',
+    '5': 'French',
+    '6': 'Hebrew',
+    '7': 'Japanese',
+    '8': 'Dutch',
+    '9': 'Polish',
+    '10': 'Portuguese',
+    '11': 'Romanian',
+    '12': 'Russian',
+    '13': 'Turkish',
+}
+
 
 def enter_data() -> tuple[str, str, str]:
-    print('Hello, welcome to the translator. Translator supports:')
-    for num, language in languages.items():
-        print(f'{num}. {language}')
-
-    src = choose_language('Type the number of your language:\n', languages)
-    dst = choose_language(
-        "Type the number of a language you want to translate to or '0' to translate to all languages:\n",
-        {'0': 'all', **languages})
-    word = input('Type the word you want to translate:\n')
+    # print('Hello, welcome to the translator. Translator supports:')
+    # for num, language in languages.items():
+    #     print(f'{num}. {language}')
+    #
+    # src = choose_language('Type the number of your language:\n', languages)
+    # dst = choose_language(
+    #     "Type the number of a language you want to translate to or '0' to translate to all languages:\n",
+    #     {'0': 'all', **languages})
+    # word = input('Type the word you want to translate:\n')
+    if len(sys.argv) != 4:
+        sys.exit('Wrong number of arguments')
+    src = sys.argv[1].title()
+    dst = sys.argv[2].title()
+    word = sys.argv[3]
+    if src not in languages.values() or dst not in {'0': 'All', **languages}.values():
+        sys.exit('wrong language')
     return src, dst, word
 
 
-def choose_language(prompt: str, languages: dict[str, str]) -> str:
-    while (num := input(prompt)) not in languages:
-        continue
-    return languages[num]
+# def choose_language(prompt: str, languages_: dict[str, str]) -> str:
+#     while (num := input(prompt)) not in languages_:
+#         continue
+#     return languages_[num]
 
 
 def generate_url(src: str, dst: str, word: str) -> str:
@@ -60,19 +68,21 @@ def output_content(word: str, dst: str, terms: list[str], examples: list[str]) -
     file_name: str = word + '.txt'
 
     print(f'\n{dst} Translations:')
-    print(terms[0])
+    [print(term) for term in terms]
     print(f'\n{dst} Examples:')
-    print(examples[0])
-    print(examples[1])
-    # print()
+    for i in range(0, len(examples), 2):
+        print(examples[i])
+        print(examples[i + 1])
+        print()
 
     with open(file_name, 'a', encoding='utf-8') as f:
         print(f'\n{dst} Translations:', file=f)
-        print(terms[0], file=f)
+        [print(term, file=f) for term in terms]
         print(f'\n{dst} Examples:', file=f)
-        print(examples[0], file=f)
-        print(examples[1], file=f)
-        # print('', file=f)
+        for i in range(0, len(examples), 2):
+            print(examples[i], file=f)
+            print(examples[i + 1], file=f)
+            print('', file=f)
 
 
 def get_page(url: str) -> requests.Response:
@@ -86,7 +96,7 @@ def get_page(url: str) -> requests.Response:
 
 def main():
     src, dst, word = enter_data()
-    if dst == 'all':
+    if dst == 'All':
         for dst in languages.values():
             if src == dst:
                 continue
