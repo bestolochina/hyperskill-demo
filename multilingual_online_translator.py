@@ -20,29 +20,18 @@ languages: dict[str, str] = {
 
 
 def enter_data() -> tuple[str, str, str]:
-    # print('Hello, welcome to the translator. Translator supports:')
-    # for num, language in languages.items():
-    #     print(f'{num}. {language}')
-    #
-    # src = choose_language('Type the number of your language:\n', languages)
-    # dst = choose_language(
-    #     "Type the number of a language you want to translate to or '0' to translate to all languages:\n",
-    #     {'0': 'all', **languages})
-    # word = input('Type the word you want to translate:\n')
     if len(sys.argv) != 4:
         sys.exit('Wrong number of arguments')
-    src = sys.argv[1].title()
-    dst = sys.argv[2].title()
+    src = sys.argv[1]
+    dst = sys.argv[2]
     word = sys.argv[3]
-    if src not in languages.values() or dst not in {'0': 'All', **languages}.values():
+    if src.title() not in languages.values():
+        print(f"Sorry, the program doesn't support {src}")
+        sys.exit()
+    if dst.title() not in {'0': 'All', **languages}.values():
+        print(f"Sorry, the program doesn't support {dst}")
         sys.exit('wrong language')
-    return src, dst, word
-
-
-# def choose_language(prompt: str, languages_: dict[str, str]) -> str:
-#     while (num := input(prompt)) not in languages_:
-#         continue
-#     return languages_[num]
+    return src.title(), dst.title(), word
 
 
 def generate_url(src: str, dst: str, word: str) -> str:
@@ -85,12 +74,17 @@ def output_content(word: str, dst: str, terms: list[str], examples: list[str]) -
             print('', file=f)
 
 
-def get_page(url: str) -> requests.Response:
+def get_page(url: str, word: str) -> requests.Response:
     headers = {'User-Agent': 'Mozilla/5.0 AppleWebKit/537.36 Chrome/93.0.4577.82 Safari/537.36'}
     while True:
         page = requests.get(url, headers=headers)
+        if page.status_code == 404:
+            print(f'Sorry, unable to find {word}')
+            sys.exit()
         if page.status_code == requests.codes.ok:
             break
+        print('Something wrong with your internet connection')
+        sys.exit()
     return page
 
 
@@ -101,7 +95,7 @@ def main():
             if src == dst:
                 continue
             url = generate_url(src, dst, word)
-            page = get_page(url)
+            page = get_page(url, word)
             terms, examples = get_content(page)
             output_content(word, dst, terms, examples)
 
