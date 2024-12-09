@@ -63,6 +63,29 @@ if __name__ == '__main__':
     new_hr_index = [row for row in hr_data_df['employee_id']]
     hr_data_df.index = new_hr_index
 
-    print(list(A_office_data_df.index))
-    print(list(B_office_data_df.index))
-    print(list(hr_data_df.index))
+    # Concatenating A_office_data_df and B_office_data_df dataframes
+    AB_office_data_df = pd.concat([A_office_data_df, B_office_data_df])
+
+    # Merging hr_data_df and AB_office_data_df
+    result_df = pd.merge(AB_office_data_df, hr_data_df,
+                         how='left',
+                         left_index=True,
+                         right_index=True,
+                         indicator=True)
+
+    # Filter rows where the indicator column shows data in both datasets
+    result_df = result_df[result_df['_merge'] == 'both']
+
+    # Drop 3 columns - 'employee_office_id', 'employee_id', '_merge'
+    result_df = result_df.drop(columns=['employee_office_id', 'employee_id', '_merge'])
+
+    # Sort result_df by index
+    result_df = result_df.sort_index(axis=0, inplace=False)
+
+    # Get lists of indexes and columns
+    index_list = result_df.index.tolist()
+    columns_list = result_df.columns.tolist()
+
+    # print these indices
+    print(index_list)
+    print(columns_list)
