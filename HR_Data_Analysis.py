@@ -82,10 +82,15 @@ if __name__ == '__main__':
     # Sort result_df by index
     result_df = result_df.sort_index(axis=0, inplace=False)
 
-    # Get lists of indexes and columns
-    index_list = result_df.index.tolist()
-    columns_list = result_df.columns.tolist()
+    # Get top ten employees in terms of working hours
+    top_10 = result_df.sort_values(by='average_monthly_hours', ascending=False).head(10)['Department'].to_list()
+    print(top_10)
 
-    # print these indices
-    print(index_list)
-    print(columns_list)
+    # Get the total number of projects on which IT department employees with low salaries have worked
+    it_projects = result_df.query("Department == 'IT' & salary == 'low'")['number_project'].sum()
+    print(it_projects)
+
+    # the last evaluation scores and the satisfaction levels of the employees A4, B7064, and A3033
+    employees = result_df.loc[['A4', 'B7064', 'A3033'], ['last_evaluation', 'satisfaction_level']].values.tolist()
+    print(employees)
+
