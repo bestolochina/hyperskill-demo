@@ -15,7 +15,10 @@ app_logger = logging.getLogger('app')
 # db_logger = logging.getLogger('app.database')
 # auth_logger = logging.getLogger('app.authentication')
 
-# scroll down to the bottom to implement your solution
+
+def count_bigger_5(series: pd.Series) -> int:
+    return (series > 5).sum()
+
 
 if __name__ == '__main__':
 
@@ -82,15 +85,12 @@ if __name__ == '__main__':
     # Sort result_df by index
     result_df = result_df.sort_index(axis=0, inplace=False)
 
-    # Get top ten employees in terms of working hours
-    top_10 = result_df.sort_values(by='average_monthly_hours', ascending=False).head(10)['Department'].to_list()
-    print(top_10)
+    # Aggregation
+    result = result_df.groupby('left').agg({
+        'number_project': ['median', count_bigger_5],
+        'time_spend_company': ['mean', 'median'],
+        'Work_accident': 'mean',
+        'last_evaluation': ['mean', 'std']
+    }).round(2).to_dict()
 
-    # Get the total number of projects on which IT department employees with low salaries have worked
-    it_projects = result_df.query("Department == 'IT' & salary == 'low'")['number_project'].sum()
-    print(it_projects)
-
-    # the last evaluation scores and the satisfaction levels of the employees A4, B7064, and A3033
-    employees = result_df.loc[['A4', 'B7064', 'A3033'], ['last_evaluation', 'satisfaction_level']].values.tolist()
-    print(employees)
-
+    print(result)
