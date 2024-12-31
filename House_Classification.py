@@ -3,9 +3,54 @@ import requests
 import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
+
+
+def one_hot_encoding():
+    # Create the encoder and specify the drop='first' parameter to drop the first column, created by the encoder
+    encoder = OneHotEncoder(drop='first')
+
+    # Fit the encoder to the training data using three categorical columns: Zip_area, Zip_loc, Room
+    encoder.fit(X_train[['Zip_area', 'Zip_loc', 'Room']])
+
+    # Transform the training and the test datasets with the fitted encoder
+    X_train_transformed = pd.DataFrame(encoder.transform(X_train[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
+                                       index=X_train.index)
+    X_test_transformed = pd.DataFrame(encoder.transform(X_test[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
+                                      index=X_test.index)
+
+    # Return the transformed data to the dataset
+    X_train_final = X_train[['Area', 'Lon', 'Lat']].join(X_train_transformed)
+    X_test_final = X_test[['Area', 'Lon', 'Lat']].join(X_test_transformed)
+
+    # Convert column names to strings
+    return X_train_final.columns.astype(str), X_test_final.columns.astype(str)
+
+
+def ordinal_encoding():
+    # Create the encoder
+    encoder = OrdinalEncoder()
+
+    # Fit the encoder to the training data
+    encoder.fit(X_train[['Zip_area', 'Zip_loc', 'Room']])
+
+    # Transform the training and test datasets
+    X_train_transformed = pd.DataFrame(encoder.transform(X_train[['Zip_area', 'Zip_loc', 'Room']]),
+                                       index=X_train.index,
+                                       columns=['Zip_area', 'Zip_loc', 'Room'])
+    X_test_transformed = pd.DataFrame(encoder.transform(X_test[['Zip_area', 'Zip_loc', 'Room']]),
+                                      index=X_test.index,
+                                      columns=['Zip_area', 'Zip_loc', 'Room'])
+
+    # Replace the original categorical columns with the transformed ones
+    X_train_final = X_train.drop(['Zip_area', 'Zip_loc', 'Room'], axis=1).join(X_train_transformed)
+    X_test_final = X_test.drop(['Zip_area', 'Zip_loc', 'Room'], axis=1).join(X_test_transformed)
+
+    # Return the transformed datasets
+    return X_train_final, X_test_final
+
 
 if __name__ == '__main__':
     # Define the data directory and file paths
@@ -44,29 +89,9 @@ if __name__ == '__main__':
                                                         stratify=X['Zip_loc'].values,
                                                         random_state=1)
 
-    # Create the encoder and specify the drop='first' parameter to drop the first column, created by the encoder
-    encoder = OneHotEncoder(drop='first')
+    X_train_final, X_test_final = ordinal_encoding()
 
-    # Fit the encoder to the training data using three categorical columns: Zip_area, Zip_loc, Room
-    encoder.fit(X_train[['Zip_area', 'Zip_loc', 'Room']])
-
-    # Transform the training and the test datasets with the fitted encoder
-    X_train_transformed = pd.DataFrame(encoder.transform(X_train[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
-                                       index=X_train.index)
-    X_test_transformed = pd.DataFrame(encoder.transform(X_test[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
-                                      index=X_test.index)
-
-    # Return the transformed data to the dataset
-    X_train_final = X_train[['Area', 'Lon', 'Lat']].join(X_train_transformed)
-    X_test_final = X_test[['Area', 'Lon', 'Lat']].join(X_test_transformed)
-
-    # Convert column names to strings
-    X_train_final.columns = X_train_final.columns.astype(str)
-    X_test_final.columns = X_test_final.columns.astype(str)
-
-    # print(X_train_final.columns)
-    # print(X_test_final.columns)
-    # sys.exit()
+    # print(X_train_final.columns == X_test_final.columns)
 
     # Use DecisionTreeClassifier from scikit-learn.
     # Fit the model to the training data and predict the house prices on the test data
