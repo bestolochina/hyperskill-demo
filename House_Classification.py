@@ -3,6 +3,9 @@ import requests
 import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
 
 if __name__ == '__main__':
     # Define the data directory and file paths
@@ -41,5 +44,43 @@ if __name__ == '__main__':
                                                         stratify=X['Zip_loc'].values,
                                                         random_state=1)
 
-    # Print the value counts of the 'Zip_loc' column in the training set as a dictionary
-    print(X_train['Zip_loc'].value_counts().to_dict())
+    # Create the encoder and specify the drop='first' parameter to drop the first column, created by the encoder
+    encoder = OneHotEncoder(drop='first')
+
+    # Fit the encoder to the training data using three categorical columns: Zip_area, Zip_loc, Room
+    encoder.fit(X_train[['Zip_area', 'Zip_loc', 'Room']])
+
+    # Transform the training and the test datasets with the fitted encoder
+    X_train_transformed = pd.DataFrame(encoder.transform(X_train[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
+                                       index=X_train.index)
+    X_test_transformed = pd.DataFrame(encoder.transform(X_test[['Zip_area', 'Zip_loc', 'Room']]).toarray(),
+                                      index=X_test.index)
+
+    # Return the transformed data to the dataset
+    X_train_final = X_train[['Area', 'Lon', 'Lat']].join(X_train_transformed)
+    X_test_final = X_test[['Area', 'Lon', 'Lat']].join(X_test_transformed)
+
+    # Convert column names to strings
+    X_train_final.columns = X_train_final.columns.astype(str)
+    X_test_final.columns = X_test_final.columns.astype(str)
+
+    # print(X_train_final.columns)
+    # print(X_test_final.columns)
+    # sys.exit()
+
+    # Use DecisionTreeClassifier from scikit-learn.
+    # Fit the model to the training data and predict the house prices on the test data
+    clf = DecisionTreeClassifier(criterion='entropy',
+                                 max_features=3,
+                                 splitter='best',
+                                 max_depth=6,
+                                 min_samples_split=4,
+                                 random_state=3)
+    clf.fit(X_train_final, y_train)
+    y_pred = clf.predict(X_test_final)
+
+    # Evaluate the model's accuracy using the accuracy_score function from sklearn.metrics
+    accuracy = accuracy_score(y_test, y_pred)
+
+    # Print the accuracy value
+    print(accuracy)
