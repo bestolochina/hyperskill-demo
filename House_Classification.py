@@ -4,6 +4,7 @@ import sys
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from category_encoders import TargetEncoder
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 
@@ -52,6 +53,25 @@ def ordinal_encoding():
     return X_train_final, X_test_final
 
 
+def target_encoding():
+    # Create the encoder
+    encoder = TargetEncoder(cols=['Zip_area', 'Room', 'Zip_loc'])
+
+    # Fit the encoder on training data
+    encoder.fit(X_train[['Zip_area', 'Zip_loc', 'Room']], y_train)
+
+    # Transform only the specified columns
+    X_train_transformed = encoder.transform(X_train[['Zip_area', 'Zip_loc', 'Room']])
+    X_test_transformed = encoder.transform(X_test[['Zip_area', 'Zip_loc', 'Room']])
+
+    # Replace the original categorical columns with the transformed ones
+    X_train_final = X_train[['Area', 'Lon', 'Lat']].join(X_train_transformed[['Room', 'Zip_area', 'Zip_loc']])
+    X_test_final = X_test[['Area', 'Lon', 'Lat']].join(X_test_transformed[['Room', 'Zip_area', 'Zip_loc']])
+
+    # Return the transformed datasets
+    return X_train_final, X_test_final
+
+
 if __name__ == '__main__':
     # Define the data directory and file paths
     data_dir = os.path.join('..', 'Data')
@@ -89,7 +109,7 @@ if __name__ == '__main__':
                                                         stratify=X['Zip_loc'].values,
                                                         random_state=1)
 
-    X_train_final, X_test_final = ordinal_encoding()
+    X_train_final, X_test_final = target_encoding()
 
     # print(X_train_final.columns == X_test_final.columns)
 
