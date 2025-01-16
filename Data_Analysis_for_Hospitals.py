@@ -1,5 +1,7 @@
 import os
 import pandas as pd
+import seaborn as sb
+import matplotlib.pyplot as plt
 
 
 def load_data() -> list[pd.DataFrame]:
@@ -111,12 +113,102 @@ def output_statistics(df: pd.DataFrame) -> None:
     # taken, f = a blood test wasn't taken, and 0 = there is no information. In which hospital the blood test was
     # taken the most often (there is the biggest number of t in the blood_test column among all the hospitals)? How
     # many blood tests were taken?
+    # # method 1
+    # blood_test_counts = df.loc[(df['blood_test'] == 't'), 'blood_test'].groupby(by=df['hospital']).agg(func='count')
+    # max_blood_tests_hospital = blood_test_counts.idxmax()
+    # max_blood_tests_count = blood_test_counts.max()
 
-    blood_test_counts = df.loc[(df['blood_test'] == 't'), 'blood_test'].groupby(by=df['hospital']).agg(func='count')
-    max_blood_tests_hospital = blood_test_counts.idxmax()
-    max_blood_tests_count = blood_test_counts.max()
+    # method 2
+    blood_test_pivot = pd.pivot_table(
+        data=df,
+        index='hospital',
+        columns='blood_test',
+        values='age',
+        aggfunc='count',
+    )
+    max_blood_tests_hospital = blood_test_pivot['t'].idxmax()
+    max_blood_tests_count = blood_test_pivot['t'].max()
 
     print(f'The answer to the 5th question is {max_blood_tests_hospital}, {max_blood_tests_count} blood tests')
+
+
+def visualize_data(df: pd.DataFrame) -> None:
+    # What is the most common age of a patient among all hospitals?
+    # Plot a histogram and choose one of the following age ranges: 0-15, 15-35, 35-55, 55-70, or 70-80.
+
+    plt.figure(num=1)  # Create the first figure
+
+    # method 1
+    # df.plot(y='age', kind='hist', bins=[0, 15, 35, 55, 70, 80], xticks=[0, 15, 35, 55, 70, 80])
+
+    # method 2
+    # sb.histplot(data=df, x='age', bins=[0, 15, 35, 55, 70, 80])
+    # plt.xticks([0, 15, 35, 55, 70, 80])
+
+    # method 3
+    plt.hist(data=df, x='age', bins=[0, 15, 35, 55, 70, 80], edgecolor='black')
+    plt.xticks([0, 15, 35, 55, 70, 80])
+
+    plt.show()
+
+    # What is the most common diagnosis among patients in all hospitals? Create a pie chart.
+
+    plt.figure(num=2, figsize=(8, 6))  # Create a pie chart
+    diagnosis_counts = df['diagnosis'].value_counts()  # Count the occurrences of each diagnosis
+
+    # method 1
+    # Create the pie chart using Pandas
+    diagnosis_counts.plot(
+        kind='pie',
+        autopct='%1.1f%%',
+        startangle=90,
+        figsize=(8, 6),
+        colormap='Pastel1',
+        title='Most Common Diagnoses Among Patients'
+    )
+
+    # Ensure the plot is a perfect circle
+    plt.ylabel('')  # Remove the default ylabel
+    plt.axis('equal')  # Equal aspect ratio to make the pie chart circular
+
+    # method 2
+    # plt.pie(
+    #     diagnosis_counts,
+    #     labels=diagnosis_counts.index,
+    #     autopct='%1.1f%%',
+    #     startangle=90,
+    #     colors=plt.cm.Paired.colors
+    # )
+    # plt.title('Most Common Diagnoses Among Patients')  # Add a title
+
+    plt.show()  # Display the plot
+
+    # Build a violin plot of height distribution by hospitals. Try to answer the questions.
+    # What is the main reason for the gap in values?
+    # Why there are two peaks, which correspond to the relatively small and big values?
+
+    # method 1
+    # Create a violin plot using Seaborn
+    # sb.violinplot(data=df, x='hospital', y='height', palette='pastel')
+    # plt.title('Height Distribution by Hospital')
+    # plt.xlabel('Hospital')
+    # plt.ylabel('Height')
+
+    # method 2
+    grouped_data = [group['height'] for _, group in df.groupby('hospital')]  # Group data by hospital and prepare for Matplotlib
+
+    # Create the violin plot
+    plt.violinplot(grouped_data, showmeans=True)
+    plt.xticks(range(1, len(grouped_data) + 1), df['hospital'].unique())
+    plt.xlabel('Hospital')
+    plt.ylabel('Height')
+    plt.title('Height Distribution by Hospital')
+
+    plt.show()
+
+    print('The answer to the 1st question: 15-35')
+    print('The answer to the 2nd question: pregnancy')
+    print("""Answer to question 3: This is because the general hospital and the prenatal hospital use the metric system of measurement, while the sports hospital uses the imperial system of measurement.""")
 
 
 if __name__ == '__main__':
@@ -132,5 +224,5 @@ if __name__ == '__main__':
     # preprocess data
     hospital_data = preprocess_data(hospital_data)
 
-    # output data
-    output_statistics(hospital_data)
+    # visualize data
+    visualize_data(hospital_data)
