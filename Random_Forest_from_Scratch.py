@@ -29,6 +29,14 @@ def stage_1(X_train, X_test, y_train, y_test) -> None:
     print(round(accuracy_score(y_true=y_test, y_pred=y_predict), 3))
 
 
+def create_bootstrap(x_data, y_data):
+    # take the features and the target values as parameters and return a bootstrap sample
+    mask = np.random.choice(a=len(x_data), size=len(x_data), replace=True)
+    x_sample = x_data[mask]
+    y_sample = y_data[mask]
+    return x_sample, y_sample
+
+
 if __name__ == '__main__':
     data = pd.read_csv('https://www.dropbox.com/s/4vu5j6ahk2j3ypk/titanic_train.csv?dl=1')
 
@@ -46,7 +54,8 @@ if __name__ == '__main__':
     X['Sex'] = X['Sex'].apply(lambda x: 0 if x == 'male' else 1)
     X['Embarked'] = X['Embarked'].apply(lambda x: convert_embarked(x))
 
-    X_train, X_val, y_train, y_val = \
-        train_test_split(X.values, y.values, stratify=y, train_size=0.8)
+    X_train, X_val, y_train, y_val = train_test_split(X.values, y.values, stratify=y, train_size=0.8)
 
-    stage_1(X_train, X_val, y_train, y_val)
+    X_sample, y_sample = create_bootstrap(X_train, y_train)
+    sample = y_sample.tolist()[:10]
+    print(sample)
