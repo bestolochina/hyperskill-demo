@@ -3,6 +3,7 @@ import pandas as pd
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 np.random.seed(52)
 
@@ -31,10 +32,68 @@ def stage_1(X_train, X_test, y_train, y_test) -> None:
 
 def create_bootstrap(x_data, y_data):
     # take the features and the target values as parameters and return a bootstrap sample
-    mask = np.random.choice(a=len(x_data), size=len(x_data), replace=True)
-    x_sample = x_data[mask]
-    y_sample = y_data[mask]
+    indexes = np.random.choice(a=len(x_data), size=len(x_data), replace=True)
+    x_sample = x_data[indexes]
+    y_sample = y_data[indexes]
     return x_sample, y_sample
+
+
+def stage_2(x_data, y_data):
+    print(create_bootstrap(x_data, y_data)[1].tolist()[:10])
+
+
+def stage_3(X_train, X_val, y_train, y_val):
+    # Use the first tree of the forest to make predictions on the test set.
+    # Calculate the accuracy of the test set using the predictions.
+    # Print the resulting accuracy rounded to three digits after the dot (for example, 3.141).
+    my_forest = RandomForestClassifier()
+    my_forest.fit(X_train, y_train)
+    y_predict = my_forest.forest[0].predict(X_val)
+    accuracy = accuracy_score(y_true=y_val, y_pred=y_predict)
+    print(round(accuracy, 3))
+
+
+def stage_4(X_train, X_val, y_train, y_val):
+    # Fit the model on the whole training set using the parameters from the previous stage;
+    # Predict labels for the first ten objects in the test set and print the result.
+    my_forest = RandomForestClassifier()
+    my_forest.fit(X_train, y_train)
+    predictions = my_forest.predict(X_val)
+    print(predictions.tolist()[:10])
+
+
+class RandomForestClassifier():
+    def __init__(self, n_trees=10, max_depth=np.iinfo(np.int64).max, min_error=1e-6):
+
+        self.n_trees = n_trees
+        self.max_depth = max_depth
+        self.min_error = min_error
+
+        self.forest: list[DecisionTreeClassifier] = []
+        self.is_fit = False
+
+    def fit(self, X_train, y_train):
+        for _ in tqdm(range(self.n_trees)):
+            X_sample, y_sample = create_bootstrap(X_train, y_train)
+            tree = DecisionTreeClassifier(max_depth=self.max_depth,
+                                          max_features='sqrt',
+                                          min_impurity_decrease=self.min_error)
+            tree.fit(X_sample, y_sample)
+            self.forest.append(tree)
+
+        self.is_fit = True
+
+    def predict(self, X_test):
+        if not self.is_fit:
+            raise AttributeError('The forest is not fit yet! Consider calling .fit() method.')
+
+        # Collect predictions from all trees
+        all_predictions = np.array([tree.predict(X_test) for tree in self.forest])  # Shape: (n_trees, n_samples)
+
+        # Aggregate predictions per sample using majority voting
+        final_predictions = np.apply_along_axis(lambda x: np.bincount(x).argmax(), axis=0, arr=all_predictions)
+
+        return final_predictions
 
 
 if __name__ == '__main__':
@@ -56,6 +115,4 @@ if __name__ == '__main__':
 
     X_train, X_val, y_train, y_val = train_test_split(X.values, y.values, stratify=y, train_size=0.8)
 
-    X_sample, y_sample = create_bootstrap(X_train, y_train)
-    sample = y_sample.tolist()[:10]
-    print(sample)
+    stage_4(X_train, X_val, y_train, y_val)
