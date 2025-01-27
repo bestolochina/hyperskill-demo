@@ -62,6 +62,19 @@ def stage_4(X_train, X_val, y_train, y_val):
     print(predictions.tolist()[:10])
 
 
+def stage_5(X_train, X_val, y_train, y_val):
+    # Fit your RandomForestClassifier on the whole training set;
+    # Predict labels for all the objects in the test set.
+    # Calculate and print the resulting accuracy rounded to three digits after the dot (for example, 3.141).
+    # Is the accuracy better or worse than the one in Stage 1?
+    my_forest = RandomForestClassifier()
+    my_forest.fit(X_train, y_train)
+    predictions = my_forest.predict(X_val)
+
+    accuracy = accuracy_score(y_true=y_val, y_pred=predictions)
+    print(round(accuracy, 3))
+
+
 class RandomForestClassifier():
     def __init__(self, n_trees=10, max_depth=np.iinfo(np.int64).max, min_error=1e-6):
 
@@ -115,4 +128,4 @@ if __name__ == '__main__':
 
     X_train, X_val, y_train, y_val = train_test_split(X.values, y.values, stratify=y, train_size=0.8)
 
-    stage_4(X_train, X_val, y_train, y_val)
+    stage_5(X_train, X_val, y_train, y_val)
