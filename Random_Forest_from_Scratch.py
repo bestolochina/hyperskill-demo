@@ -4,6 +4,7 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 np.random.seed(52)
 
@@ -66,13 +67,47 @@ def stage_5(X_train, X_val, y_train, y_val):
     # Fit your RandomForestClassifier on the whole training set;
     # Predict labels for all the objects in the test set.
     # Calculate and print the resulting accuracy rounded to three digits after the dot (for example, 3.141).
-    # Is the accuracy better or worse than the one in Stage 1?
     my_forest = RandomForestClassifier()
     my_forest.fit(X_train, y_train)
     predictions = my_forest.predict(X_val)
-
     accuracy = accuracy_score(y_true=y_val, y_pred=predictions)
     print(round(accuracy, 3))
+
+
+def stage_6(X_train, X_val, y_train, y_val):
+    # Fit your RandomForestClassifier on the whole train set using n_trees ranging from 1 to 600 with a step of 1.
+    # For each classifier, calculate the resulting accuracy on the test set.
+    # Print the first 20 of the resulting accuracy values rounded to three digits after the dot (for example, 3.141);
+    #
+    # Plot the resulting dependence of accuracy from the number of trees.
+    # Do you have the expected behavior of your model? This objective is optional, and it won't be part of the test.
+    accuracies = []
+    results = []
+    for n_trees in range(1, 21):
+        my_forest = RandomForestClassifier(n_trees=n_trees)
+        my_forest.fit(X_train, y_train)
+        predictions = my_forest.predict(X_val)
+        accuracy = round(accuracy_score(y_true=y_val, y_pred=predictions), 3)
+        accuracies.append(accuracy)
+        results.append({'n_trees': n_trees, 'accuracy': accuracy})
+    print(accuracies)
+
+    # # Convert results to a DataFrame
+    # results_df = pd.DataFrame(results)
+    #
+    # # Plot using Matplotlib
+    # plt.figure(figsize=(15, 9))
+    # plt.plot('n_trees', 'accuracy', data=results_df, marker='o', linestyle='-', color='b', label='Validation Accuracy')
+    # plt.title('Accuracy vs. Number of Trees', fontsize=16)
+    # plt.xlabel('Number of Trees', fontsize=14)
+    # plt.ylabel('Accuracy', fontsize=14)
+    # plt.grid(True)
+    #
+    # # Update x-ticks
+    # plt.xticks(np.arange(0, 601, 50))  # Set x-ticks from 0 to 600 with steps of 50
+    #
+    # plt.legend(fontsize=12)
+    # plt.show()
 
 
 class RandomForestClassifier():
@@ -128,4 +163,4 @@ if __name__ == '__main__':
 
     X_train, X_val, y_train, y_val = train_test_split(X.values, y.values, stratify=y, train_size=0.8)
 
-    stage_5(X_train, X_val, y_train, y_val)
+    stage_6(X_train, X_val, y_train, y_val)
