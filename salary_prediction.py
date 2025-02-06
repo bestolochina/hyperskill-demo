@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_percentage_error as mape
 
 
-def stage_1(df: pd.DataFrame):
+def stage_1(df: pd.DataFrame) -> None:
     """Perform linear regression on rating vs salary."""
     # Make X a DataFrame with a predictor rating and y a series with a target salary;
     X, y = df[['rating']], df['salary']  # X as DataFrame (2D), y as Series (1D)
@@ -30,6 +30,31 @@ def stage_1(df: pd.DataFrame):
     print(intercept, slope, model_mape)
 
 
+def stage_2(df: pd.DataFrame) -> None:
+    """Linear regression with predictor transformation."""
+    # Make X a DataFrame with a predictor rating and y a series with a target salary;
+    X, y = df[['rating']], df['salary']  # X as DataFrame (2D), y as Series (1D)
+
+    mapes = []
+    for power in (2, 3, 4):
+        # X_p = X.apply(lambda col: col**power)
+        # X_p = X.pow(power)
+        X_p = X ** power  # Raise predictor to the power of 2, 3, 4.
+
+        # Split the predictors and target into training and test sets. Use test_size=0.3 and random_state=100 parameters
+        X_train, X_test, y_train, y_test = train_test_split(X_p, y, test_size=0.3, random_state=100)
+
+        # Fit the linear model of salary on rating, make predictions and calculate the MAPE;
+        model = LinearRegression()
+        model.fit(X_train, y_train)
+        y_hat = model.predict(X_test)
+        mapes.append(round(mape(y_true=y_test, y_pred=y_hat), 5))
+
+    # Print the best MAPE obtained by fitting and running the models described above.
+    # The MAPE is a float number rounded to five decimal places.
+    print(min(mapes))
+
+
 if __name__ == '__main__':
     # checking ../Data directory presence
     if not os.path.exists('../Data'):
@@ -45,4 +70,4 @@ if __name__ == '__main__':
     data = pd.read_csv('../Data/data.csv')
     # print(data)
 
-    stage_1(data)
+    stage_2(data)
