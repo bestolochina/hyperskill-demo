@@ -55,6 +55,23 @@ def stage_2(df: pd.DataFrame) -> None:
     print(min(mapes))
 
 
+def stage_3(df: pd.DataFrame) -> None:
+    """Linear regression with many independent variables"""
+    # Make X a DataFrame with predictors and y a series with a target.
+    X = df.drop(columns='salary')
+    y = df['salary']
+
+    # Split the predictors and target into training and test sets. Use test_size=0.3 and random_state=100.
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=100)
+
+    # Fit the model predicting salary based on all other variables.
+    model = LinearRegression()
+    model.fit(X_train, y_train)
+
+    # Print the model coefficients separated by a comma.
+    print(*model.coef_, sep=', ')
+
+
 if __name__ == '__main__':
     # checking ../Data directory presence
     if not os.path.exists('../Data'):
@@ -70,4 +87,4 @@ if __name__ == '__main__':
     data = pd.read_csv('../Data/data.csv')
     # print(data)
 
-    stage_2(data)
+    stage_3(data)
