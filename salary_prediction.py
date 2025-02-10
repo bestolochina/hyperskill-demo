@@ -1,6 +1,6 @@
 import os
 import requests
-
+from itertools import combinations
 import pandas as pd
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
@@ -72,6 +72,50 @@ def stage_3(df: pd.DataFrame) -> None:
     print(*model.coef_, sep=', ')
 
 
+def stage_4(df: pd.DataFrame) -> None:
+    """Test for multicollinearity and variable selection.
+
+    The function calculates the correlation matrix for numeric predictors,
+    identifies variables with a correlation (with any other variable) greater
+    than 0.2, and then tests linear models by removing either one or two of these
+    variables. It prints the lowest MAPE (rounded to five decimal places) among these models.
+    """
+    # Calculate the correlation matrix for the numeric variables;
+    # Make X, a DataFrame with all the predictor variables, and y, a series with the target.
+    X, y = df.drop(columns='salary'), df['salary']
+    corr_matrix = X.corr()
+
+    # Find the variables where the correlation coefficient is greater than 0.2.
+    high_corr_labels = set()
+    for label in corr_matrix.index:
+        # Drop self-correlation (always 1)
+        row = corr_matrix.loc[label].drop(label)
+        # Check if any correlation exceeds the threshold
+        if (row > 0.2).any():
+            high_corr_labels.add(label)
+    comb1 = list(combinations(high_corr_labels, 1))
+    comb2 = list(combinations(high_corr_labels, 2))
+    all_combinations = comb1 + comb2
+
+    # Split the predictors and the target into training and test sets. Use test_size=0.3 and random_state=100.
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=100)
+
+    # Fit the linear models for salary prediction based on the subsets of other variables. The subsets are as follows:
+    # First, try to remove each of the three variables you've found in step 4.
+    # Second, remove each possible pair of these three variables.
+    # Make predictions and print the lowest MAPE. The MAPE is a floating number rounded to five decimal places.
+    mapes = []
+    for comb in all_combinations:
+        cols_to_drop = list(comb)  # because initially it's a tuple and we need a list
+        model = LinearRegression()
+        x_train = X_train.drop(columns=cols_to_drop)
+        model.fit(x_train, y_train)
+        x_test = X_test.drop(columns=cols_to_drop)
+        y_hat = model.predict(x_test)
+        mapes.append(round(mape(y_true=y_test, y_pred=y_hat), 5))
+    print(min(mapes))
+
+
 if __name__ == '__main__':
     # checking ../Data directory presence
     if not os.path.exists('../Data'):
@@ -87,4 +131,4 @@ if __name__ == '__main__':
     data = pd.read_csv('../Data/data.csv')
     # print(data)
 
-    stage_3(data)
+    stage_4(data)
