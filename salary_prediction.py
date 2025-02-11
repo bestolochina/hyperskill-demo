@@ -116,6 +116,71 @@ def stage_4(df: pd.DataFrame) -> None:
     print(min(mapes))
 
 
+def stage_5(df: pd.DataFrame) -> None:
+    """Deal with negative predictions"""
+    # Create X (predictors) and y (target).
+    X, y = df.drop(columns='salary'), df['salary']
+
+    # Calculate the correlation matrix for numeric variables.
+    corr_matrix = X.corr()
+
+    # Find variables that have at least one correlation > 0.2 with any other variable.
+    high_corr_labels = set()
+    for label in corr_matrix.index:
+        # Drop self-correlation (always 1)
+        row = corr_matrix.loc[label].drop(label)
+        # Check if any correlation exceeds the threshold
+        if (row > 0.2).any():
+            high_corr_labels.add(label)
+
+    # Get all possible combinations of 1 or 2 of these high-correlation labels.
+    comb1 = list(combinations(high_corr_labels, 1))
+    comb2 = list(combinations(high_corr_labels, 2))
+    all_combinations = comb1 + comb2
+
+    # Split the predictors and target into training and test sets.
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=100)
+
+    # For each combination, drop the selected columns from X, fit a model, and compute the MAPE.
+    models, drop_columns, mapes = [], [], []
+    for comb in all_combinations:
+        # Convert the combination tuple to a list for dropping columns.
+        cols_to_drop = list(comb)
+        model = LinearRegression()
+
+        # Drop the columns in the current combination from the training and test sets.
+        x_train_subset = X_train.drop(columns=cols_to_drop)
+        x_test_subset = X_test.drop(columns=cols_to_drop)
+
+        model.fit(x_train_subset, y_train)
+        y_hat = model.predict(x_test_subset)
+
+        models.append(model)
+        drop_columns.append(cols_to_drop)
+        mapes.append(round(mape(y_true=y_test, y_pred=y_hat), 5))
+
+    # Choose the model with the lowest MAPE value.
+    lowest_mape_index = mapes.index(min(mapes))
+    best_model = models[lowest_mape_index]
+    best_drop_columns = drop_columns[lowest_mape_index]
+
+    # Predict the salaries using the best model.
+    original_y_hat = best_model.predict(X_test.drop(columns=best_drop_columns))
+
+    # Technique 1: replace the negative values with 0.
+    y_hat_tech1 = original_y_hat.copy()
+    y_hat_tech1[y_hat_tech1 < 0] = 0
+    mape_1 = round(mape(y_true=y_test, y_pred=y_hat_tech1), 5)
+
+    # Technique 2: replace the negative values with the median of the training part of y.
+    y_hat_tech2 = original_y_hat.copy()
+    y_hat_tech2[y_hat_tech2 < 0] = y_train.median()
+    mape_2 = round(mape(y_true=y_test, y_pred=y_hat_tech2), 5)
+
+    # Print the best MAPE among the two techniques.
+    print(min(mape_1, mape_2))
+
+
 if __name__ == '__main__':
     # checking ../Data directory presence
     if not os.path.exists('../Data'):
@@ -131,4 +196,4 @@ if __name__ == '__main__':
     data = pd.read_csv('../Data/data.csv')
     # print(data)
 
-    stage_4(data)
+    stage_5(data)
