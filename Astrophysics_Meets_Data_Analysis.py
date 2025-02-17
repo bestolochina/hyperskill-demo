@@ -8,7 +8,7 @@ def stage_1() -> None:
     """Prepare the data"""
     # Read the following dataset: groups.tsv. TSV stands for tab-separated values.
     # Use the pandas.read_csv() function with the parameter delimiter='\t';
-    df = pd.read_csv('groups.tsv', sep='\t')
+    df = pd.read_csv(r'C:\Users\T480\Downloads\groups.tsv', sep='\t')
 
     # Remove the missing values from the dataset
     df = df.dropna(axis='index')
@@ -26,7 +26,7 @@ def stage_2() -> None:
     """One-way analysis of variance"""
     # Read the following dataset: groups.tsv. TSV stands for tab-separated values.
     # Use the pandas.read_csv() function with the parameter delimiter='\t';
-    df = pd.read_csv('groups.tsv', sep='\t')
+    df = pd.read_csv(r'C:\Users\T480\Downloads\groups.tsv', sep='\t')
 
     # Conduct the Shapiro-Wilk Normality test for the IGL mean surface brightness (the mean_mu column) in galaxies
     # with LSB features and without them. This step checks the second condition of the ANOVA test: each sample came
@@ -91,6 +91,56 @@ def stage_3() -> None:
     print(group_galaxies_fraction, isolated_galaxies_fraction, ks_2sample.pvalue)
 
 
+def stage_4() -> None:
+    """Intra-group light component and galaxy morphology"""
+    # Continue working with galaxies_morphology.tsv from the previous stage. Calculate the mean Sérsic index and the
+    # mean numerical Hubble stage for each CG. Group data by the Group column. The values of the new table are the
+    # mean Sérsic index (n) and the mean numerical galaxy type (T). Create the columns mean_n and mean_T for obtained
+    # values with the help of the .agg() method from pandas.
+    group_galaxies = pd.read_csv(r'C:\Users\T480\Downloads\galaxies_morphology.tsv', sep='\t')
+    new_group_galaxies = group_galaxies.groupby(by='Group').agg(mean_n=('n', 'mean'), mean_T=('T', 'mean'))
+
+    # Use the Group column and merge the data table with the one from groups.tsv you preprocessed in Stage 1;
+    groups = pd.read_csv(r'C:\Users\T480\Downloads\groups.tsv', sep='\t')
+    merged = new_group_galaxies.reset_index().merge(right=groups, how='outer', on='Group').dropna()
+
+    # Plot scatterplots for the following value pairs: mean_mu-mean_n and mean_mu-mean_T;
+    # plt.scatter(x=merged['mean_mu'], y=merged['mean_n'], color='blue', label='mean_mu vs mean_n')
+    # plt.scatter(x=merged['mean_mu'], y=merged['mean_T'], color='red', label='mean_mu vs mean_T')
+    # plt.xlabel('mean_mu')
+    # plt.ylabel('Values')
+    # plt.legend()
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))  # 1 row, 2 columns
+    ax[0].scatter(merged['mean_mu'], merged['mean_n'], color='blue')  # First scatter plot
+    ax[0].set_xlabel('mean_mu')
+    ax[0].set_ylabel('mean_n')
+    ax[0].set_title('mean_mu vs mean_n')
+    ax[1].scatter(merged['mean_mu'], merged['mean_T'], color='red')  # Second scatter plot
+    ax[1].set_xlabel('mean_mu')
+    ax[1].set_ylabel('mean_T')
+    ax[1].set_title('mean_mu vs mean_T')
+    plt.tight_layout()  # Adjust layout to prevent overlap
+    plt.show()
+
+    # Conduct the Shapiro-Wilk Normality tests for each variable: mean_mu, mean_n, and mean_T;
+    shapiro_mean_mu = stats.shapiro(merged['mean_mu'], nan_policy='omit')
+    shapiro_mean_n = stats.shapiro(merged['mean_n'], nan_policy='omit')
+    shapiro_mean_T = stats.shapiro(merged['mean_T'], nan_policy='omit')
+
+    # Calculate the Pearson correlation coefficients and the corresponding p-values for testing non-correlation.
+    # The null hypothesis of the test is that the considered populations are not correlated;
+    valid_mu_n = merged[['mean_mu', 'mean_n']].dropna()
+    valid_mu_T = merged[['mean_mu', 'mean_T']].dropna()
+    pearson_mean_mu_vs_mean_n = stats.pearsonr(x=valid_mu_n['mean_mu'], y=valid_mu_n['mean_n'])
+    pearson_mean_mu_vs_mean_T = stats.pearsonr(x=valid_mu_T['mean_mu'], y=valid_mu_T['mean_T'])
+
+    # Print five floating-point numbers separated by one space: p-values for normality testing of mean_mu,
+    # mean_n and mean_T, and p-values for testing non-correlation for mean_mu-mean_n and mean_mu-mean_T.
+    print(shapiro_mean_mu.pvalue, shapiro_mean_n.pvalue, shapiro_mean_T.pvalue,
+          pearson_mean_mu_vs_mean_n.pvalue, pearson_mean_mu_vs_mean_T.pvalue)
+
+
 if __name__ == '__main__':
 
-    stage_3()
+    stage_4()
