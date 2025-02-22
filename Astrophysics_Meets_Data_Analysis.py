@@ -2,6 +2,14 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 import matplotlib.pyplot as plt
+from astropy.cosmology import FlatLambdaCDM
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from itertools import combinations
+# import warnings
+#
+# warnings.simplefilter("ignore", category=DeprecationWarning)  # Suppress DeprecationWarning
+
 
 
 def stage_1() -> None:
@@ -141,6 +149,79 @@ def stage_4() -> None:
           pearson_mean_mu_vs_mean_n.pvalue, pearson_mean_mu_vs_mean_T.pvalue)
 
 
+def stage_5() -> None:
+    """Median projected separation"""
+    # Initialize the ΛCDM cosmology model with the parameters H0=67.74, Ωm=0.3089 using astropy.cosmology.FlatLambdaCDM
+    model = FlatLambdaCDM(H0=67.74, Om0=0.3089)
+
+    # Read the dataset with galaxies' equatorial coordinates: galaxies_coordinates.tsv.
+    # Use the pandas.read_csv() function with the parameter delimiter='\t'
+    df = pd.read_csv(r'C:\Users\T480\Downloads\galaxies_coordinates.tsv', sep='\t')
+
+    # Calculate the angular diameter distances, dAdA, in kiloparsecs for groups' redshifts (the z column in
+    # groups.tsv from the Stage 1) using the cosmology model method angular_diameter_distance
+    groups = pd.read_csv(r'C:\Users\T480\Downloads\groups.tsv', sep='\t')
+    groups['ad_distances'] = model.angular_diameter_distance(groups['z']).to(u.kpc).value
+
+    # Calculate the projected median separation. It is the median of the pairwise projected distance between
+    # the galaxies in each group. It is denoted as r in the formula from the Theory section.
+    # Use astropy.coordinates.SkyCoord with the "fk5" coordinate frame. To find the angular distance, θ,
+    # between two points with the sky coordinates p1 and p2, use the separation method of the SkyCoord object
+    def median_separation(df: pd.DataFrame, groups: pd.DataFrame) -> float:
+        """Compute the median physical separation (in Mpc) for all galaxy pairs within the group."""
+
+        pairs = list(combinations(df.itertuples(index=False), 2))  # Generate all unique pairs
+
+        separations = []
+        for p1, p2 in pairs:
+            coord1 = SkyCoord(ra=p1.RA * u.deg, dec=p1.DEC * u.deg, frame='fk5')
+            coord2 = SkyCoord(ra=p2.RA * u.deg, dec=p2.DEC * u.deg, frame='fk5')
+            separation = coord1.separation(coord2).to(u.rad).value  # Convert to radians
+
+            # Extract angular diameter distance (assumes one value per group)
+            ad_distance_series = groups.loc[groups['Group'] == p1.Group, 'ad_distances']
+            if ad_distance_series.empty:
+                continue  # Skip if no matching group
+
+            ad_distance = ad_distance_series.values[0]  # Extract scalar value
+
+            r = separation * ad_distance  # Compute physical distance
+            separations.append(r)
+
+        return np.median(separations) if separations else np.nan  # Handle single-galaxy groups
+
+    # Apply function to each group and store the median separation
+    median_separations = df.groupby("Group")[['Group', 'Name', 'RA', 'DEC']].apply(median_separation, groups=groups).reset_index(name="Median_Separation")
+    merged = median_separations.merge(right=groups, how='outer', on='Group')
+
+    # Plot a scatterplot for the projected median separation and the IGL mean surface brightness (mean_mu)
+    plt.scatter(x=merged['Median_Separation'], y=merged['mean_mu'], color='red', label='Median_Separation vs mean_n')
+    plt.xlabel('R (kpc)')
+    plt.ylabel(r'$\mu_{IGL,r} (mag~arcsec^{-2})$')  # Correct LaTeX formatting
+    plt.legend()
+    plt.gca().invert_yaxis()  # Invert the Y-axis
+    plt.show()
+
+    merged = merged.dropna()
+
+    # Conduct the Shapiro-Wilk Normality test for the projected median separation and mean_mu
+    shapiro_median_separation = stats.shapiro(merged['Median_Separation'], nan_policy='omit')
+    shapiro_mean_mu = stats.shapiro(merged['mean_mu'], nan_policy='omit')
+
+    # Calculate the Pearson correlation coefficient and the corresponding p-value
+    # for testing the non-correlation for these values
+    valid_data = merged[['Median_Separation', 'mean_mu']].dropna()
+    pearson_median_separation_vs_mean_mu = stats.pearsonr(x=valid_data['Median_Separation'], y=valid_data['mean_mu'])
+
+    # Print four floating-point numbers separated with a space: the projected median separation for the HCG 2 group,
+    # p-values for the normality test of the projected median separation and mean_mu,
+    # and a p-value for testing the non-correlation for these values
+    print(merged.loc[merged['Group'] == 'HCG 2', 'Median_Separation'].iloc[0],
+          shapiro_median_separation.pvalue,
+          shapiro_mean_mu.pvalue,
+          pearson_median_separation_vs_mean_mu.pvalue)
+
+
 if __name__ == '__main__':
 
-    stage_4()
+    stage_5()
