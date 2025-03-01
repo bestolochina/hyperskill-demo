@@ -1,4 +1,5 @@
 import pandas as pd
+from sklearn.metrics import confusion_matrix
 
 
 class Node:
@@ -24,7 +25,7 @@ class Node:
 
 
 class DecisionTree:
-    def __init__(self, root: Node, min_samples: int = 1) -> None:
+    def __init__(self, root: Node, min_samples: int = 74) -> None:
         self.root = root
         self.min_samples = min_samples
 
@@ -118,7 +119,6 @@ class DecisionTree:
         if node.term:
             return node.label
 
-        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
         if row[node.feature] == node.value:
             return self._recursive_predicting(node.left, row)
         else:
@@ -130,23 +130,23 @@ class DecisionTree:
 
     def predict(self, features: pd.DataFrame) -> pd.Series:
         """Takes a set of new observations and return an array with predictions of a target variable"""
-        # return features.apply(lambda row: self._recursive_predicting(self.root, row), axis=1)
-        predicted_labels = pd.Series(dtype=str)
-        for index, row in features.iterrows():
-            print(f'Prediction for sample # {index}')
-            predicted_label = self._recursive_predicting(self.root, row)
-            print(f'   Predicted label: {predicted_label}')
-            predicted_labels.loc[index] = predicted_label
-        return predicted_labels
+        return features.apply(lambda row: self._recursive_predicting(self.root, row), axis=1)
 
 
-if __name__ == '__main__':
-    # Stage 5
+def stage_6():
     train_set, test_set = input().split()
-    # train_set, test_set = r'test/data_stage5_train.csv', r'test/data_stage5_test.csv'
-    df_train, features_test = pd.read_csv(train_set, index_col=0), pd.read_csv(test_set, index_col=0)
+    # train_set, test_set = r'test/data_stage6_train.csv', r'test/data_stage6_test.csv'
+    df_train, df_test = pd.read_csv(train_set, index_col=0), pd.read_csv(test_set, index_col=0)
     features_train, target_train = df_train.drop(columns=['Survived']), df_train.Survived
+    features_test, target_test = df_test.drop(columns=['Survived']), df_test.Survived
     root_ = Node()
     tree = DecisionTree(root_)
     tree.fit(features_train, target_train)
-    tree.predict(features_test)
+    target_hat = tree.predict(features_test)
+    conf_matrix = confusion_matrix(target_test, target_hat, normalize='true')
+    tp, tn = conf_matrix[1, 1], conf_matrix[0, 0]
+    print(round(tp, 3), round(tn, 3))
+
+
+if __name__ == '__main__':
+    stage_6()
