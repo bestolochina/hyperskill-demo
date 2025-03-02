@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from sklearn.metrics import confusion_matrix
 
@@ -54,19 +55,24 @@ class DecisionTree:
 
         return round(weighted_gini_score, 5)  # Round to 5 decimal places
 
-    def _split_node(self, features: pd.DataFrame, target: pd.Series) -> tuple[float, str, int, pd.Index, pd.Index]:
+    def _split_node(self, features: pd.DataFrame, target: pd.Series) -> tuple[float, str, int | float, pd.Index, pd.Index]:
         """Find the best split by minimizing weighted Gini Impurity"""
-        best_gini = float('inf')
+        best_gini = float("inf")
         best_feature = None
         best_value = None
         best_left_indexes = None
         best_right_indexes = None
 
         for feature in features.columns:
-            unique_values = features[feature].unique()
+            unique_values = np.sort(features[feature].unique()) if feature in {"Age", "Fare"} else features[feature].unique()
+
             for value in unique_values:
-                left_indexes = features.index[features[feature] == value]
-                right_indexes = features.index[features[feature] != value]
+                if feature in {"Age", "Fare"}:  # numerical values
+                    left_indexes = features.loc[features[feature] <= value].index
+                else:  # categorical values
+                    left_indexes = features.loc[features[feature] == value].index
+
+                right_indexes = features.index.difference(left_indexes)
 
                 left_labels = target.loc[left_indexes]
                 right_labels = target.loc[right_indexes]
@@ -133,20 +139,17 @@ class DecisionTree:
         return features.apply(lambda row: self._recursive_predicting(self.root, row), axis=1)
 
 
-def stage_6():
-    train_set, test_set = input().split()
-    # train_set, test_set = r'test/data_stage6_train.csv', r'test/data_stage6_test.csv'
-    df_train, df_test = pd.read_csv(train_set, index_col=0), pd.read_csv(test_set, index_col=0)
+def stage_7():
+    train_set = input()
+    # train_set = r'test/data_stage7.csv'
+    df_train = pd.read_csv(train_set, index_col=0)
     features_train, target_train = df_train.drop(columns=['Survived']), df_train.Survived
-    features_test, target_test = df_test.drop(columns=['Survived']), df_test.Survived
     root_ = Node()
     tree = DecisionTree(root_)
-    tree.fit(features_train, target_train)
-    target_hat = tree.predict(features_test)
-    conf_matrix = confusion_matrix(target_test, target_hat, normalize='true')
-    tp, tn = conf_matrix[1, 1], conf_matrix[0, 0]
-    print(round(tp, 3), round(tn, 3))
+    gini, feature, value, left_indexes, right_indexes = tree._split_node(features_train, target_train)
+
+    print(round(gini, 3), feature, round(value, 3), left_indexes.tolist(), right_indexes.tolist())
 
 
 if __name__ == '__main__':
-    stage_6()
+    stage_7()
