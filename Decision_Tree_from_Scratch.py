@@ -56,8 +56,8 @@ class DecisionTree:
 
         return round(weighted_gini_score, 5)  # Round to 5 decimal places
 
-    def _split_node(self, features: pd.DataFrame, target: pd.Series) -> tuple[
-        float, str, int | float, pd.Index, pd.Index]:
+    def _split_node(self, features: pd.DataFrame, target: pd.Series)\
+            -> tuple[float, str, int | float, pd.Index, pd.Index]:
         """Find the best split by minimizing weighted Gini Impurity"""
         best_gini = float("inf")
         best_feature = None
@@ -66,9 +66,6 @@ class DecisionTree:
         best_right_indexes = None
 
         for feature in features.columns:
-            # unique_values = np.sort(features[feature].unique()) if feature in self.num_features else features[
-            #     feature].unique()
-
             unique_values = features[feature].unique()
 
             for value in unique_values:
@@ -90,8 +87,6 @@ class DecisionTree:
                     best_value = value
                     best_left_indexes = left_indexes
                     best_right_indexes = right_indexes
-
-        print(f'Made split: {best_feature} is {best_value}')
 
         return best_gini, best_feature, best_value, best_left_indexes, best_right_indexes
 
@@ -132,8 +127,6 @@ class DecisionTree:
         if node.term:
             return node.label
 
-        print(f'   Considering decision rule on feature {node.feature} with value {node.value}')
-
         if ((node.feature in self.num_features and row[node.feature] <= node.value) or  # numerical value
                 (node.feature not in self.num_features and row[node.feature] == node.value)):  # categorical value
             return self._recursive_predicting(node.left, row)
@@ -146,26 +139,23 @@ class DecisionTree:
 
     def predict(self, features: pd.DataFrame) -> pd.Series:
         """Takes a set of new observations and return an array with predictions of a target variable"""
-        # return features.apply(lambda row: self._recursive_predicting(self.root, row), axis=1)
-        predicted_labels = pd.Series(dtype=str)
-        for index, row in features.iterrows():
-            print(f'Prediction for sample # {index}')
-            predicted_label = self._recursive_predicting(self.root, row)
-            print(f'   Predicted label: {predicted_label}')
-            predicted_labels.loc[index] = predicted_label
-        return predicted_labels
+        return features.apply(lambda row: self._recursive_predicting(self.root, row), axis=1)
 
 
-def stage_8():
+def stage_9():
     train_set, test_set = input().split()
-    # train_set, test_set = r'test/data_stage8_train.csv', r'test/data_stage8_test.csv'
-    df_train, features_test = pd.read_csv(train_set, index_col=0), pd.read_csv(test_set, index_col=0)
+    # train_set, test_set = r'test/data_stage9_train.csv', r'test/data_stage9_test.csv'
+    df_train, df_test = pd.read_csv(train_set, index_col=0), pd.read_csv(test_set, index_col=0)
     features_train, target_train = df_train.drop(columns=['Survived']), df_train.Survived
+    features_test, target_test = df_test.drop(columns=['Survived']), df_test.Survived
     root_ = Node()
-    tree = DecisionTree(root_, ["Age", "Fare"])
+    tree = DecisionTree(root=root_, num_features=["Age", "Fare"], min_samples=74)
     tree.fit(features_train, target_train)
-    tree.predict(features_test)
+    target_predicted = tree.predict(features_test)
+    conf_matrix = confusion_matrix(target_test, target_predicted, normalize='true')
+    tp, tn = conf_matrix[1, 1], conf_matrix[0, 0]
+    print(round(tp, 3), round(tn, 3))
 
 
 if __name__ == '__main__':
-    stage_8()
+    stage_9()
