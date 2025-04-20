@@ -30,6 +30,31 @@ class CustomLogisticRegression:
                 error = (y_hat - y_train[i]) * y_hat * (1 - y_hat)
                 self.coef_ -= self.l_rate * error * x_i
 
+    def fit_log_loss_stochastic(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
+        n_weights = X_train.shape[1] + 1 if self.fit_intercept else X_train.shape[1]
+        self.coef_ = np.zeros(n_weights)
+
+        for _ in range(self.n_epoch):
+            for i, row in enumerate(X_train):
+                x_i = np.insert(row, 0, 1) if self.fit_intercept else row
+                y_hat = self.predict_proba(x_i, self.coef_)
+                error = y_hat - y_train[i]
+                self.coef_ -= self.l_rate * error * x_i
+
+    def fit_log_loss_batch(self, X_train: np.ndarray, y_train: np.ndarray) -> None:
+        n_weights = X_train.shape[1] + 1 if self.fit_intercept else X_train.shape[1]
+        self.coef_ = np.zeros(n_weights)
+        N = X_train.shape[0]
+
+        for _ in range(self.n_epoch):
+            grad_sum = np.zeros_like(self.coef_)
+            for i, row in enumerate(X_train):
+                x_i = np.insert(row, 0, 1) if self.fit_intercept else row
+                y_hat = self.predict_proba(x_i, self.coef_)
+                error = y_hat - y_train[i]
+                grad_sum += error * x_i
+            self.coef_ -= self.l_rate * grad_sum / N
+
     def predict(self, X_test: np.ndarray, cut_off: float = 0.5) -> np.ndarray:
         predictions: list[int] = []
         for row in X_test:
@@ -51,7 +76,7 @@ y_train = y_train.values
 y_test = y_test.values
 
 lr = CustomLogisticRegression(fit_intercept=True, l_rate=0.01, n_epoch=1000)
-lr.fit_mse(X_train, y_train)
+lr.fit_log_loss_batch(X_train, y_train)
 y_hat = lr.predict(X_test=X_test, cut_off=0.5)
 accuracy = accuracy_score(y_true=y_test, y_pred=y_hat)
 
@@ -59,3 +84,7 @@ print({
     'coef_': lr.coef_.tolist(),
     'accuracy': round(accuracy, 2)
 })
+# Batch GD
+# {'coef_': [0.47504181195159484, -1.1362548138402373, -0.9652893368882177,  -0.9583091724508233], 'accuracy': 0.96}
+# Stochastic GD
+# {'coef_': [0.9691863004807794,  -3.189245498665274,  -0.06772152038396555, -4.411364102524354],  'accuracy': 0.96}
